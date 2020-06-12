@@ -135,6 +135,11 @@ include $(SDKCONFIG)
 # Compiler and linker flags
 
 INC += -I.
+INC += -I./esp32-camera/driver/include
+INC += -I./esp32-camera/driver/private_include
+INC += -I./esp32-camera/sensors/private_include
+INC += -I./esp32-camera/conversions/include
+INC += -I./esp32-camera/conversions/private_include
 INC += -I$(TOP)
 INC += -I$(TOP)/lib/mp-readline
 INC += -I$(TOP)/lib/netutils
@@ -253,6 +258,11 @@ CFLAGS_MOD += -DMICROPY_PY_BLUETOOTH=1
 CFLAGS_MOD += -DMICROPY_PY_BLUETOOTH_ENABLE_CENTRAL_MODE=1
 endif
 
+CFLAGS_MOD += -DCONFIG_OV2640_SUPPORT
+#CFLAGS_MOD += -DCONFIG_OV7725_SUPPORT
+#CFLAGS_MOD += -DCONFIG_OV3660_SUPPORT
+#CFLAGS_MOD += -DCONFIG_OV5640_SUPPORT
+
 # these flags are common to C and C++ compilation
 CFLAGS_COMMON = -Os -ffunction-sections -fdata-sections -fstrict-volatile-bitfields \
 	-mlongcalls -nostdlib \
@@ -320,42 +330,51 @@ endif
 ################################################################################
 # List of MicroPython source and object files
 
-SRC_C = \
-	main.c \
-	uart.c \
-	gccollect.c \
-	mphalport.c \
-	fatfs_port.c \
-	help.c \
-	modutime.c \
-	moduos.c \
-	machine_timer.c \
-	machine_pin.c \
-	machine_touchpad.c \
-	machine_adc.c \
-	machine_dac.c \
-	machine_i2c.c \
-	machine_pwm.c \
-	machine_uart.c \
-	modmachine.c \
-	modnetwork.c \
-	network_lan.c \
-	network_ppp.c \
-	nimble.c \
-	modsocket.c \
-	modesp.c \
-	esp32_partition.c \
-	esp32_rmt.c \
-	esp32_ulp.c \
-	modesp32.c \
-	espneopixel.c \
-	machine_hw_spi.c \
-	machine_wdt.c \
-	mpthreadport.c \
-	machine_rtc.c \
-	machine_sdcard.c \
-	$(wildcard $(BOARD_DIR)/*.c) \
-	$(SRC_MOD)
+SRC_C  = main.c
+SRC_C += uart.c
+SRC_C += gccollect.c
+SRC_C += mphalport.c
+SRC_C += fatfs_port.c
+SRC_C += help.c
+SRC_C += modutime.c
+SRC_C += moduos.c
+SRC_C += machine_timer.c
+SRC_C += machine_pin.c
+SRC_C += machine_touchpad.c
+SRC_C += machine_adc.c
+SRC_C += machine_dac.c
+SRC_C += machine_i2c.c
+SRC_C += machine_pwm.c
+SRC_C += machine_uart.c
+SRC_C += modmachine.c
+SRC_C += modnetwork.c
+SRC_C += network_lan.c
+SRC_C += network_ppp.c
+SRC_C += nimble.c
+SRC_C += modsocket.c
+SRC_C += modesp.c
+SRC_C += esp32-camera/driver/camera.c
+SRC_C += esp32-camera/driver/sccb.c
+SRC_C += esp32-camera/driver/sensor.c
+SRC_C += esp32-camera/driver/twi.c
+SRC_C += esp32-camera/driver/xclk.c
+SRC_C += esp32-camera/sensors/ov2640.c
+#SRC_C += esp32-camera/sensors/ov3660.c
+#SRC_C += esp32-camera/sensors/ov5640.c
+#SRC_C += esp32-camera/sensors/ov7725.c
+SRC_C += modcamera.c
+SRC_C += esp32_partition.c
+SRC_C += esp32_rmt.c
+SRC_C += esp32_ulp.c
+SRC_C += modesp32.c
+SRC_C += espneopixel.c
+SRC_C += machine_hw_spi.c
+SRC_C += machine_wdt.c
+SRC_C += mpthreadport.c
+SRC_C += machine_rtc.c
+SRC_C += machine_sdcard.c
+SRC_C += $(wildcard $(BOARD_DIR)/*.c)
+SRC_C += $(SRC_MOD)
 
 EXTMOD_SRC_C += $(addprefix extmod/,\
 	modonewire.c \
