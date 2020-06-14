@@ -12,8 +12,13 @@ extern "C" {
 #endif
 
 #include "py/mpconfig.h"
+
 #include "py/misc.h"
 #include "py/mpprint.h"
+#include "py/runtime.h"
+
+#include "modcampy.h"
+#include "mp_namespace.h"
 
 #ifdef __cplusplus
 }

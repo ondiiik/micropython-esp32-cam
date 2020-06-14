@@ -79,19 +79,6 @@ static const char* CAMERA_PIXFORMAT_NVS_KEY = "pixformat";
 
 typedef void (*dma_filter_t)(const dma_elem_t* src, lldesc_t* dma_desc, uint8_t* dst);
 
-typedef struct camera_fb_s {
-    uint8_t * buf;
-    size_t len;
-    size_t width;
-    size_t height;
-    pixformat_t format;
-    struct timeval timestamp;
-    size_t size;
-    uint8_t ref;
-    uint8_t bad;
-    struct camera_fb_s * next;
-} camera_fb_int_t;
-
 typedef struct fb_s {
     uint8_t * buf;
     size_t len;
@@ -102,7 +89,7 @@ typedef struct {
     camera_config_t config;
     sensor_t sensor;
 
-    camera_fb_int_t *fb;
+    camera_fb_t *fb;
     size_t fb_size;
     size_t data_size;
 
@@ -218,7 +205,7 @@ timeout:
 
 static void camera_fb_deinit()
 {
-    camera_fb_int_t * _fb1 = s_state->fb, * _fb2 = NULL;
+    camera_fb_t * _fb1 = s_state->fb, * _fb2 = NULL;
     while(s_state->fb) {
         _fb2 = s_state->fb;
         s_state->fb = _fb2->next;
@@ -230,6 +217,7 @@ static void camera_fb_deinit()
     }
 }
 
+
 static esp_err_t camera_fb_init(size_t count)
 {
     if(!count) {
@@ -240,13 +228,12 @@ static esp_err_t camera_fb_init(size_t count)
 
     ESP_LOGI(TAG, "Allocating %u frame buffers (%d KB total)", count, (s_state->fb_size * count) / 1024);
 
-    camera_fb_int_t * _fb = NULL, * _fb1 = NULL, * _fb2 = NULL;
+    camera_fb_t * _fb = NULL, * _fb1 = NULL, * _fb2 = NULL;
     for(size_t i = 0; i < count; i++) {
-        _fb2 = (camera_fb_int_t *)m_malloc(sizeof(camera_fb_int_t));
+        _fb2 = (camera_fb_t *)m_malloc0(sizeof(camera_fb_t));
         if(!_fb2) {
             goto fail;
         }
-        memset(_fb2, 0, sizeof(camera_fb_int_t));
         _fb2->size = s_state->fb_size;
         _fb2->buf = (uint8_t*) m_malloc0(_fb2->size);
         if(!_fb2->buf) {
@@ -254,7 +241,6 @@ static esp_err_t camera_fb_init(size_t count)
             ESP_LOGE(TAG, "Allocating %d KB frame buffer Failed", s_state->fb_size/1024);
             goto fail;
         }
-        memset(_fb2->buf, 0, _fb2->size);
         _fb2->next = _fb;
         _fb = _fb2;
         if(!i) {
@@ -479,7 +465,7 @@ static int i2s_run()
     }
 
     // wait for frame
-    camera_fb_int_t * fb = s_state->fb;
+    camera_fb_t * fb = s_state->fb;
     while(s_state->config.fb_count > 1) {
         while(s_state->fb->ref && s_state->fb->next != fb) {
             s_state->fb = s_state->fb->next;
@@ -600,7 +586,7 @@ static void IRAM_ATTR vsync_isr(void* arg)
 
 static void IRAM_ATTR camera_fb_done()
 {
-    camera_fb_int_t * fb = NULL, * fb2 = NULL;
+    camera_fb_t * fb = NULL, * fb2 = NULL;
     BaseType_t taskAwoken = 0;
 
     if(s_state->config.fb_count == 1) {
@@ -1392,7 +1378,7 @@ camera_fb_t* esp_camera_fb_get()
         }
         return (camera_fb_t*)s_state->fb;
     }
-    camera_fb_int_t * fb = NULL;
+    camera_fb_t * fb = NULL;
     if(s_state->fb_out) {
         if (xQueueReceive(s_state->fb_out, &fb, FB_GET_TIMEOUT) != pdTRUE) {
             i2s_stop(&need_yield);
@@ -1505,4 +1491,40 @@ esp_err_t esp_camera_load_from_nvs(const char *key)
       ESP_LOGW(TAG,"Error (%d) opening nvs key \"%s\"",ret,key);
       return ret;
   }
+}
+
+
+/*
+ * See description with declaration
+ */
+struct campy_FrameBuffer* campy_FrameBuffer_new(unsigned    aWidth,
+                                                unsigned    aHeight,
+                                                pixformat_t aPixFirmat,
+                                                const byte* aData,
+                                                size_t      aLen)
+{
+    if (NULL == s_state)
+    {
+        mp_raise_msg(&mp_type_Exception, MP_ERROR_TEXT("Camera not initialized"));
+    }
+    
+    if (aLen > s_state->fb_size)
+    {
+        mp_raise_msg(&mp_type_Exception, MP_ERROR_TEXT("Data too large to be stored into buffer"));
+    }
+    
+    struct campy_FrameBuffer* self = m_new_obj(struct campy_FrameBuffer);
+    
+    self->base.type            = &MP_NAMESPACE2(campy,FrameBuffer);
+    self->fb.buf               = (uint8_t*)m_malloc(s_state->fb_size);
+    self->fb.len               = aLen;
+    self->fb.width             = aWidth;
+    self->fb.height            = aHeight;
+    self->fb.format            = aPixFirmat;
+    self->fb.timestamp.tv_sec  = 0;
+    self->fb.timestamp.tv_usec = 0;
+    
+    memcpy(self->fb.buf, aData, aLen);
+    
+    return self;
 }
