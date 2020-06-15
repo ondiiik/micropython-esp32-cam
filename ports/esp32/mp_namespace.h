@@ -30,61 +30,32 @@
     };
 
 
-#define MP_CLASS_BEGIN(_parent_,_name_) \
-    STATIC const mp_map_elem_t mpy__##_parent_##__##_name_##_T[] = \
-    { \
-        { MP_OBJ_NEW_QSTR(MP_QSTR___name__), MP_OBJ_NEW_QSTR(MP_QSTR_##_name_) },
-
-
-#define MP_CLASS_END(_parent_,_name_) \
-    }; \
-    \
-    STATIC MP_DEFINE_CONST_DICT ( \
-        mpy__##_parent_##__##_name_##_D, \
-        mpy__##_parent_##__##_name_##_T \
-    ); \
-    \
+#define MP_CLASS(_parent_,_name_) \
     const mp_obj_type_t mpy__##_parent_##__##_name_ = \
     { \
         { &mp_type_type }, \
-        .name        =                  MP_QSTR_##_name_, \
-        .make_new    =                  mpy__##_parent_##__##_name_##____init__, \
-        .print       =                  mpy__##_parent_##__##_name_##____str__, \
-        .attr        =                  mpy__##_parent_##__##_name_##____attr__, \
-        .locals_dict = (mp_obj_dict_t*)&mpy__##_parent_##__##_name_##_D \
+        .name     = MP_QSTR_##_name_, \
+        .make_new = mpy__##_parent_##__##_name_##____init__, \
+        .print    = mpy__##_parent_##__##_name_##____str__, \
+        .attr     = mpy__##_parent_##__##_name_##____attr__, \
     };
+
+
+#define MP_ATTR_PROPERTY(_parent_, _name_, _self_) \
+            case MP_QSTR_##_name_: \
+                aDestination[0] = mpy__##_parent_##__##_name_(_self_); \
+                break;
+
+
+#define MP_ATTR_METHOD(_parent_, _name_, _self_) \
+            case MP_QSTR_##_name_: \
+                aDestination[0] = (mp_obj_t)&mpy__##_parent_##__##_name_; \
+                aDestination[1] = _self_; \
+                break;
 
 
 #define MP_MEMBER(_parent_, _member_) \
     { MP_ROM_QSTR(MP_QSTR_##_member_), MP_ROM_PTR(&mpy__##_parent_##__##_member_) },
-
-
-#define MP_FN(_parent_, _fn_) \
-    { MP_ROM_QSTR(MP_QSTR_##_fn_), (mp_obj_t)(&mpy__##_parent_##__##_fn_) },
-
-
-#define MP_ATTR_FROM_CLASS 0
-
-
-#define MP_ATTR_TO_CLASS 1
-
-
-#define MP_METHOD_LOOKUP(_self_, _attr_, _dst_) \
-    do \
-    { \
-        const mp_obj_type_t* type = mp_obj_get_type(_self_); \
-        \
-        assert(type->locals_dict->base.type == &mp_type_dict); \
-        \
-        mp_map_t*      locals_map = &type->locals_dict->map; \
-        mp_map_elem_t* elem       = mp_map_lookup(locals_map, MP_OBJ_NEW_QSTR(_attr_), MP_MAP_LOOKUP); \
-        \
-        if (elem != NULL) \
-        { \
-            mp_convert_member_lookup(_self_, type, elem->value, _dst_); \
-        } \
-    } \
-    while (false)
 
 
 #define MP_FN_0(_parent_, _member_) \

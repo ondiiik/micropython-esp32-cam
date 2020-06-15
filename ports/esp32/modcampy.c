@@ -112,49 +112,48 @@ STATIC void MP_NAMESPACE3(campy, FrameBuffer, __str__)(const mp_print_t* aPrint,
 }
 
 
+STATIC mp_obj_t MP_NAMESPACE2(campy__FrameBuffer, data)(mp_obj_t  aSelf)
+{
+    struct campy_FrameBuffer* self  = MP_OBJ_TO_PTR(aSelf);
+    mp_obj_str_t*             bytes = m_new_obj(mp_obj_str_t);
+    
+    bytes->base.type    = &mp_type_bytes;
+    bytes->data         = (const byte*)self->fb.buf;
+    bytes->len          = self->fb.len;
+    bytes->hash         = qstr_compute_hash(bytes->data, bytes->len);
+    
+    return bytes;
+}
+
+
+STATIC mp_obj_t MP_NAMESPACE2(campy__FrameBuffer, width)(mp_obj_t  aSelf)
+{
+    struct campy_FrameBuffer* self  = MP_OBJ_TO_PTR(aSelf);
+    return MP_OBJ_NEW_SMALL_INT(self->fb.width);
+}
+
+
+STATIC mp_obj_t MP_NAMESPACE2(campy__FrameBuffer, height)(mp_obj_t  aSelf)
+{
+    struct campy_FrameBuffer* self  = MP_OBJ_TO_PTR(aSelf);
+    return MP_OBJ_NEW_SMALL_INT(self->fb.height);
+}
+
+
 STATIC void MP_NAMESPACE3(campy, FrameBuffer, __attr__)(mp_obj_t  aSelf,
                                                         qstr      aAttribute,
                                                         mp_obj_t* aDestination)
 {
-    struct campy_FrameBuffer* self = MP_OBJ_TO_PTR(aSelf);
-    
     switch (aAttribute)
     {
-        case MP_QSTR_data:
-            {
-                mp_obj_str_t* bytes              = m_new_obj(mp_obj_str_t);
-                
-                bytes->base.type                 = &mp_type_bytes;
-                bytes->data                      = (const byte*)self->fb.buf;
-                bytes->len                       = self->fb.len;
-                bytes->hash                      = qstr_compute_hash(bytes->data, bytes->len);
-                
-                aDestination[MP_ATTR_FROM_CLASS] = bytes;
-                break;
-            }
-            
-            
-        case MP_QSTR_width:
-            {
-                aDestination[MP_ATTR_FROM_CLASS] = MP_OBJ_NEW_SMALL_INT(self->fb.width);
-                break;
-            }
-            
-            
-        case MP_QSTR_height:
-            {
-                aDestination[MP_ATTR_FROM_CLASS] = MP_OBJ_NEW_SMALL_INT(self->fb.height);
-                break;
-            }
-            
-        default:
-            MP_METHOD_LOOKUP(aSelf, aAttribute, aDestination);
+        MP_ATTR_PROPERTY(campy__FrameBuffer, data,   aSelf);
+        MP_ATTR_PROPERTY(campy__FrameBuffer, width,  aSelf);
+        MP_ATTR_PROPERTY(campy__FrameBuffer, height, aSelf);
     }
 }
 
 
-MP_CLASS_BEGIN( campy, FrameBuffer )
-MP_CLASS_END(   campy, FrameBuffer )
+MP_CLASS(campy, FrameBuffer)
 
 
 
@@ -210,6 +209,14 @@ STATIC void MP_NAMESPACE3(campy, Camera, __str__)(const mp_print_t* aPrint,
 
 MP_FN_1(campy__Camera, capture, aSelf)
 {
+    struct campy_Camera* self = MP_OBJ_TO_PTR(aSelf);
+    
+    if (_activeCamera != self)
+    {
+        mp_raise_msg(&mp_type_Exception, MP_ERROR_TEXT("This camera was replaced by another active camera"));
+    }
+    
+    
     camera_fb_t* fb = esp_camera_fb_get();
     
     if (!fb)
@@ -230,9 +237,7 @@ MP_FN_1(campy__Camera, capture, aSelf)
 }
 
 
-STATIC void MP_NAMESPACE3(campy, Camera, __attr__)(mp_obj_t  aSelf,
-                                                   qstr      aAttribute,
-                                                   mp_obj_t* aDestination)
+STATIC mp_obj_t MP_NAMESPACE2(campy__Camera, model)(mp_obj_t  aSelf)
 {
     struct campy_Camera* self = MP_OBJ_TO_PTR(aSelf);
     
@@ -241,30 +246,31 @@ STATIC void MP_NAMESPACE3(campy, Camera, __attr__)(mp_obj_t  aSelf,
         mp_raise_msg(&mp_type_Exception, MP_ERROR_TEXT("This camera was replaced by another active camera"));
     }
     
+    mp_obj_str_t* str = m_new_obj(mp_obj_str_t);
+    
+    str->base.type    = &mp_type_str;
+    str->data         = (const byte*)self->model;
+    str->len          = strlen(self->model);
+    str->hash         = qstr_compute_hash(str->data, str->len);
+    
+    return str;
+}
+
+
+
+STATIC void MP_NAMESPACE3(campy, Camera, __attr__)(mp_obj_t  aSelf,
+                                                   qstr      aAttribute,
+                                                   mp_obj_t* aDestination)
+{
     switch (aAttribute)
     {
-        case MP_QSTR_model:
-            {
-                mp_obj_str_t* str                = m_new_obj(mp_obj_str_t);
-                
-                str->base.type                   = &mp_type_str;
-                str->data                        = (const byte*)self->model;
-                str->len                         = strlen(self->model);
-                str->hash                        = qstr_compute_hash(str->data, str->len);
-                
-                aDestination[MP_ATTR_FROM_CLASS] = str;
-                break;
-            }
-            
-        default:
-            MP_METHOD_LOOKUP(aSelf, aAttribute, aDestination);
+        MP_ATTR_PROPERTY(campy__Camera, model,   aSelf);
+        MP_ATTR_METHOD(  campy__Camera, capture, aSelf);
     }
 }
 
 
-MP_CLASS_BEGIN( campy, Camera          )
-MP_FN(          campy__Camera, capture )
-MP_CLASS_END(   campy, Camera          )
+MP_CLASS(campy, Camera)
 
 
 
