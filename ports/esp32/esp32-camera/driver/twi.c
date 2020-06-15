@@ -54,85 +54,121 @@ const uint8_t pin_to_mux[40] = { 0x44, 0x88, 0x40, 0x84, 0x48, 0x6c, 0x60, 0x64,
 
 static void pinMode(uint8_t pin, uint8_t mode)
 {
-    if(pin >= 40) {
+    if (pin >= 40)
+    {
         return;
     }
-
+    
     uint32_t rtc_reg = rtc_gpio_desc[pin].reg;
-
+    
     //RTC pins PULL settings
-    if(rtc_reg) {
+    if (rtc_reg)
+    {
         //lock rtc
         ESP_REG(rtc_reg) = ESP_REG(rtc_reg) & ~(rtc_gpio_desc[pin].mux);
-        if(mode & PULLUP) {
+        if (mode & PULLUP)
+        {
             ESP_REG(rtc_reg) = (ESP_REG(rtc_reg) | rtc_gpio_desc[pin].pullup) & ~(rtc_gpio_desc[pin].pulldown);
-        } else if(mode & PULLDOWN) {
+        }
+        else if (mode & PULLDOWN)
+        {
             ESP_REG(rtc_reg) = (ESP_REG(rtc_reg) | rtc_gpio_desc[pin].pulldown) & ~(rtc_gpio_desc[pin].pullup);
-        } else {
+        }
+        else
+        {
             ESP_REG(rtc_reg) = ESP_REG(rtc_reg) & ~(rtc_gpio_desc[pin].pullup | rtc_gpio_desc[pin].pulldown);
         }
         //unlock rtc
     }
-
+    
     uint32_t pinFunction = 0, pinControl = 0;
-
+    
     //lock gpio
-    if(mode & INPUT) {
-        if(pin < 32) {
+    if (mode & INPUT)
+    {
+        if (pin < 32)
+        {
             GPIO.enable_w1tc = BIT(pin);
-        } else {
+        }
+        else
+        {
             GPIO.enable1_w1tc.val = BIT(pin - 32);
         }
-    } else if(mode & OUTPUT) {
-        if(pin > 33) {
+    }
+    else if (mode & OUTPUT)
+    {
+        if (pin > 33)
+        {
             //unlock gpio
             return;//pins above 33 can be only inputs
-        } else if(pin < 32) {
+        }
+        else if (pin < 32)
+        {
             GPIO.enable_w1ts = BIT(pin);
-        } else {
+        }
+        else
+        {
             GPIO.enable1_w1ts.val = BIT(pin - 32);
         }
     }
-
-    if(mode & PULLUP) {
+    
+    if (mode & PULLUP)
+    {
         pinFunction |= FUN_PU;
-    } else if(mode & PULLDOWN) {
+    }
+    else if (mode & PULLDOWN)
+    {
         pinFunction |= FUN_PD;
     }
-
+    
     pinFunction |= ((uint32_t)2 << FUN_DRV_S);//what are the drivers?
     pinFunction |= FUN_IE;//input enable but required for output as well?
-
-    if(mode & (INPUT | OUTPUT)) {
+    
+    if (mode & (INPUT | OUTPUT))
+    {
         pinFunction |= ((uint32_t)2 << MCU_SEL_S);
-    } else if(mode == SPECIAL) {
-        pinFunction |= ((uint32_t)(((pin)==1||(pin)==3)?0:1) << MCU_SEL_S);
-    } else {
+    }
+    else if (mode == SPECIAL)
+    {
+        pinFunction |= ((uint32_t)(((pin) == 1 || (pin) == 3) ? 0 : 1) << MCU_SEL_S);
+    }
+    else
+    {
         pinFunction |= ((uint32_t)(mode >> 5) << MCU_SEL_S);
     }
-
+    
     ESP_REG(DR_REG_IO_MUX_BASE + pin_to_mux[pin]) = pinFunction;
-
-    if(mode & OPEN_DRAIN) {
+    
+    if (mode & OPEN_DRAIN)
+    {
         pinControl = (1 << GPIO_PIN0_PAD_DRIVER_S);
     }
-
+    
     GPIO.pin[pin].val = pinControl;
     //unlock gpio
 }
 
 static void digitalWrite(uint8_t pin, uint8_t val)
 {
-    if(val) {
-        if(pin < 32) {
+    if (val)
+    {
+        if (pin < 32)
+        {
             GPIO.out_w1ts = BIT(pin);
-        } else if(pin < 34) {
+        }
+        else if (pin < 34)
+        {
             GPIO.out1_w1ts.val = BIT(pin - 32);
         }
-    } else {
-        if(pin < 32) {
+    }
+    else
+    {
+        if (pin < 32)
+        {
             GPIO.out_w1tc = BIT(pin);
-        } else if(pin < 34) {
+        }
+        else if (pin < 34)
+        {
             GPIO.out1_w1tc.val = BIT(pin - 32);
         }
     }
@@ -147,9 +183,12 @@ static inline void SDA_LOW()
 {
     //Enable SDA (becomes output and since GPO is 0 for the pin,
     // it will pull the line low)
-    if (twi_sda < 32) {
+    if (twi_sda < 32)
+    {
         GPIO.enable_w1ts = BIT(twi_sda);
-    } else {
+    }
+    else
+    {
         GPIO.enable1_w1ts.val = BIT(twi_sda - 32);
     }
 }
@@ -157,45 +196,60 @@ static inline void SDA_LOW()
 static inline void SDA_HIGH()
 {
     //Disable SDA (becomes input and since it has pullup it will go high)
-    if (twi_sda < 32) {
+    if (twi_sda < 32)
+    {
         GPIO.enable_w1tc = BIT(twi_sda);
-    } else {
+    }
+    else
+    {
         GPIO.enable1_w1tc.val = BIT(twi_sda - 32);
     }
 }
 
 static inline uint32_t SDA_READ()
 {
-    if (twi_sda < 32) {
+    if (twi_sda < 32)
+    {
         return (GPIO.in & BIT(twi_sda)) != 0;
-    } else {
+    }
+    else
+    {
         return (GPIO.in1.val & BIT(twi_sda - 32)) != 0;
     }
 }
 
 static void SCL_LOW()
 {
-    if (twi_scl < 32) {
+    if (twi_scl < 32)
+    {
         GPIO.enable_w1ts = BIT(twi_scl);
-    } else {
+    }
+    else
+    {
         GPIO.enable1_w1ts.val = BIT(twi_scl - 32);
     }
 }
 
 static void SCL_HIGH()
 {
-    if (twi_scl < 32) {
+    if (twi_scl < 32)
+    {
         GPIO.enable_w1tc = BIT(twi_scl);
-    } else {
+    }
+    else
+    {
         GPIO.enable1_w1tc.val = BIT(twi_scl - 32);
     }
 }
 
 static uint32_t SCL_READ()
 {
-    if (twi_scl < 32) {
+    if (twi_scl < 32)
+    {
         return (GPIO.in & BIT(twi_scl)) != 0;
-    } else {
+    }
+    else
+    {
         return (GPIO.in1.val & BIT(twi_scl - 32)) != 0;
     }
 }
@@ -214,31 +268,53 @@ static uint32_t SCL_READ()
 void twi_setClock(unsigned int freq)
 {
 #if F_CPU == FCPU80
-    if(freq <= 100000) {
+    if (freq <= 100000)
+    {
         twi_dcount = 19;    //about 100KHz
-    } else if(freq <= 200000) {
+    }
+    else if (freq <= 200000)
+    {
         twi_dcount = 8;    //about 200KHz
-    } else if(freq <= 300000) {
+    }
+    else if (freq <= 300000)
+    {
         twi_dcount = 3;    //about 300KHz
-    } else if(freq <= 400000) {
+    }
+    else if (freq <= 400000)
+    {
         twi_dcount = 1;    //about 400KHz
-    } else {
+    }
+    else
+    {
         twi_dcount = 1;    //about 400KHz
     }
 #else
-    if(freq <= 100000) {
+    if (freq <= 100000)
+    {
         twi_dcount = 32;    //about 100KHz
-    } else if(freq <= 200000) {
+    }
+    else if (freq <= 200000)
+    {
         twi_dcount = 14;    //about 200KHz
-    } else if(freq <= 300000) {
+    }
+    else if (freq <= 300000)
+    {
         twi_dcount = 8;    //about 300KHz
-    } else if(freq <= 400000) {
+    }
+    else if (freq <= 400000)
+    {
         twi_dcount = 5;    //about 400KHz
-    } else if(freq <= 500000) {
+    }
+    else if (freq <= 500000)
+    {
         twi_dcount = 3;    //about 500KHz
-    } else if(freq <= 600000) {
+    }
+    else if (freq <= 600000)
+    {
         twi_dcount = 2;    //about 600KHz
-    } else {
+    }
+    else
+    {
         twi_dcount = 1;    //about 700KHz
     }
 #endif
@@ -250,10 +326,10 @@ void twi_init(unsigned char sda, unsigned char scl)
     twi_scl = scl;
     pinMode(twi_sda, OUTPUT);
     pinMode(twi_scl, OUTPUT);
-
+    
     digitalWrite(twi_sda, 0);
     digitalWrite(twi_scl, 0);
-
+    
     pinMode(twi_sda, INPUT_PULLUP);
     pinMode(twi_scl, INPUT_PULLUP);
     twi_setClock(100000);
@@ -271,7 +347,8 @@ static void twi_delay(unsigned char v)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
     unsigned int reg;
-    for(i=0; i<v; i++) {
+    for (i = 0; i < v; i++)
+    {
         reg = REG_READ(GPIO_IN_REG);
     }
 #pragma GCC diagnostic pop
@@ -281,7 +358,8 @@ static bool twi_write_start(void)
 {
     SCL_HIGH();
     SDA_HIGH();
-    if (SDA_READ() == 0) {
+    if (SDA_READ() == 0)
+    {
         return false;
     }
     twi_delay(twi_dcount);
@@ -301,7 +379,7 @@ static bool twi_write_stop(void)
     twi_delay(twi_dcount);
     SDA_HIGH();
     twi_delay(twi_dcount);
-
+    
     return true;
 }
 
@@ -310,16 +388,20 @@ static bool twi_write_bit(bool bit)
 {
     unsigned int i = 0;
     SCL_LOW();
-    if (bit) {
+    if (bit)
+    {
         SDA_HIGH();
-        if (do_log) {
-            twi_delay(twi_dcount+1);
+        if (do_log)
+        {
+            twi_delay(twi_dcount + 1);
         }
-    } else {
+    }
+    else
+    {
         SDA_LOW();
         if (do_log) {}
     }
-    twi_delay(twi_dcount+1);
+    twi_delay(twi_dcount + 1);
     SCL_HIGH();
     while (SCL_READ() == 0 && (i++) < TWI_CLOCK_STRETCH);// Clock stretching (up to 100us)
     twi_delay(twi_dcount);
@@ -331,7 +413,7 @@ static bool twi_read_bit(void)
     unsigned int i = 0;
     SCL_LOW();
     SDA_HIGH();
-    twi_delay(twi_dcount+2);
+    twi_delay(twi_dcount + 2);
     SCL_HIGH();
     while (SCL_READ() == 0 && (i++) < TWI_CLOCK_STRETCH);// Clock stretching (up to 100us)
     bool bit = SDA_READ();
@@ -342,16 +424,19 @@ static bool twi_read_bit(void)
 static bool twi_write_byte(unsigned char byte)
 {
 
-    if (byte == 0x43) {
+    if (byte == 0x43)
+    {
         // printf("TWB %02x ", (uint32_t) byte);
         // do_log = true;
     }
     unsigned char bit;
-    for (bit = 0; bit < 8; bit++) {
+    for (bit = 0; bit < 8; bit++)
+    {
         twi_write_bit((byte & 0x80) != 0);
         byte <<= 1;
     }
-    if (do_log) {
+    if (do_log)
+    {
         printf("\n");
         do_log = false;
     }
@@ -362,38 +447,47 @@ static unsigned char twi_read_byte(bool nack)
 {
     unsigned char byte = 0;
     unsigned char bit;
-    for (bit = 0; bit < 8; bit++) {
+    for (bit = 0; bit < 8; bit++)
+    {
         byte = (byte << 1) | twi_read_bit();
     }
     twi_write_bit(nack);
     return byte;
 }
 
-unsigned char twi_writeTo(unsigned char address, unsigned char * buf, unsigned int len, unsigned char sendStop)
+unsigned char twi_writeTo(unsigned char address, unsigned char* buf, unsigned int len, unsigned char sendStop)
 {
     unsigned int i;
-    if(!twi_write_start()) {
+    if (!twi_write_start())
+    {
         return 4;    //line busy
     }
-    if(!twi_write_byte(((address << 1) | 0) & 0xFF)) {
-        if (sendStop) {
+    if (!twi_write_byte(((address << 1) | 0) & 0xFF))
+    {
+        if (sendStop)
+        {
             twi_write_stop();
         }
         return 2; //received NACK on transmit of address
     }
-    for(i=0; i<len; i++) {
-        if(!twi_write_byte(buf[i])) {
-            if (sendStop) {
+    for (i = 0; i < len; i++)
+    {
+        if (!twi_write_byte(buf[i]))
+        {
+            if (sendStop)
+            {
                 twi_write_stop();
             }
             return 3;//received NACK on transmit of data
         }
     }
-    if(sendStop) {
+    if (sendStop)
+    {
         twi_write_stop();
     }
     i = 0;
-    while(SDA_READ() == 0 && (i++) < 10) {
+    while (SDA_READ() == 0 && (i++) < 10)
+    {
         SCL_LOW();
         twi_delay(twi_dcount);
         SCL_HIGH();
@@ -405,24 +499,30 @@ unsigned char twi_writeTo(unsigned char address, unsigned char * buf, unsigned i
 unsigned char twi_readFrom(unsigned char address, unsigned char* buf, unsigned int len, unsigned char sendStop)
 {
     unsigned int i;
-    if(!twi_write_start()) {
+    if (!twi_write_start())
+    {
         return 4;    //line busy
     }
-    if(!twi_write_byte(((address << 1) | 1) & 0xFF)) {
-        if (sendStop) {
+    if (!twi_write_byte(((address << 1) | 1) & 0xFF))
+    {
+        if (sendStop)
+        {
             twi_write_stop();
         }
         return 2;//received NACK on transmit of address
     }
-    for(i=0; i<(len-1); i++) {
+    for (i = 0; i < (len - 1); i++)
+    {
         buf[i] = twi_read_byte(false);
     }
-    buf[len-1] = twi_read_byte(true);
-    if(sendStop) {
+    buf[len - 1] = twi_read_byte(true);
+    if (sendStop)
+    {
         twi_write_stop();
     }
     i = 0;
-    while(SDA_READ() == 0 && (i++) < 10) {
+    while (SDA_READ() == 0 && (i++) < 10)
+    {
         SCL_LOW();
         twi_delay(twi_dcount);
         SCL_HIGH();

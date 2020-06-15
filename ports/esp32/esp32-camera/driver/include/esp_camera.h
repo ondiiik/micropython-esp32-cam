@@ -77,7 +77,8 @@ extern "C" {
 /**
  * @brief Configuration structure for camera initialization
  */
-typedef struct {
+typedef struct
+{
     int pin_pwdn;                   /*!< GPIO pin for camera power down line */
     int pin_reset;                  /*!< GPIO pin for camera reset line */
     int pin_xclk;                   /*!< GPIO pin for camera XCLK line */
@@ -94,15 +95,15 @@ typedef struct {
     int pin_vsync;                  /*!< GPIO pin for camera VSYNC line */
     int pin_href;                   /*!< GPIO pin for camera HREF line */
     int pin_pclk;                   /*!< GPIO pin for camera PCLK line */
-
+    
     int xclk_freq_hz;               /*!< Frequency of XCLK signal, in Hz. Either 20KHz or 10KHz for OV2640 double FPS (Experimental) */
-
+    
     ledc_timer_t ledc_timer;        /*!< LEDC timer to be used for generating XCLK  */
     ledc_channel_t ledc_channel;    /*!< LEDC channel to be used for generating XCLK  */
-
+    
     pixformat_t pixel_format;       /*!< Format of the pixel data: PIXFORMAT_ + YUV422|GRAYSCALE|RGB565|JPEG  */
     framesize_t frame_size;         /*!< Size of the output image: FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA  */
-
+    
     int jpeg_quality;               /*!< Quality of JPEG output. 0-63 lower means higher quality  */
     size_t fb_count;                /*!< Number of frame buffers to be allocated. If more than one, then each frame will be acquired (double speed)  */
 } camera_config_t;
@@ -110,8 +111,9 @@ typedef struct {
 /**
  * @brief Data structure of camera frame buffer
  */
-typedef struct camera_fb_s {
-    uint8_t * buf;              /*!< Pointer to the pixel data */
+typedef struct camera_fb_s
+{
+    uint8_t* buf;               /*!< Pointer to the pixel data */
     size_t len;                 /*!< Length of the buffer in bytes */
     size_t width;               /*!< Width of the buffer in pixels */
     size_t height;              /*!< Height of the buffer in pixels */
@@ -120,7 +122,7 @@ typedef struct camera_fb_s {
     size_t size;
     uint8_t ref;
     uint8_t bad;
-    struct camera_fb_s * next;
+    struct camera_fb_s* next;
 } camera_fb_t;
 
 #define ESP_ERR_CAMERA_BASE 0x20000
@@ -128,24 +130,6 @@ typedef struct camera_fb_s {
 #define ESP_ERR_CAMERA_FAILED_TO_SET_FRAME_SIZE (ESP_ERR_CAMERA_BASE + 2)
 #define ESP_ERR_CAMERA_FAILED_TO_SET_OUT_FORMAT (ESP_ERR_CAMERA_BASE + 3)
 #define ESP_ERR_CAMERA_NOT_SUPPORTED            (ESP_ERR_CAMERA_BASE + 4)
-
-/**
- * @brief Initialize the camera driver
- *
- * @note call camera_probe before calling this function
- *
- * This function detects and configures camera over I2C interface,
- * allocates framebuffer and DMA buffers,
- * initializes parallel I2S input, and sets up DMA descriptors.
- *
- * Currently this function can only be called once and there is
- * no way to de-initialize this module.
- *
- * @param config  Camera configuration parameters
- *
- * @return ESP_OK on success
- */
-esp_err_t esp_camera_init(const camera_config_t* config);
 
 /**
  * @brief Deinitialize the camera driver
@@ -168,28 +152,28 @@ camera_fb_t* esp_camera_fb_get();
  *
  * @param fb    Pointer to the frame buffer
  */
-void esp_camera_fb_return(camera_fb_t * fb);
+void esp_camera_fb_return(camera_fb_t* fb);
 
 /**
  * @brief Get a pointer to the image sensor control structure
  *
  * @return pointer to the sensor
  */
-sensor_t * esp_camera_sensor_get();
+sensor_t* esp_camera_sensor_get();
 
 /**
  * @brief Save camera settings to non-volatile-storage (NVS)
- * 
- * @param key   A unique nvs key name for the camera settings 
+ *
+ * @param key   A unique nvs key name for the camera settings
  */
-esp_err_t esp_camera_save_to_nvs(const char *key);
+esp_err_t esp_camera_save_to_nvs(const char* key);
 
 /**
  * @brief Load camera settings from non-volatile-storage (NVS)
- * 
- * @param key   A unique nvs key name for the camera settings 
+ *
+ * @param key   A unique nvs key name for the camera settings
  */
-esp_err_t esp_camera_load_from_nvs(const char *key);
+esp_err_t esp_camera_load_from_nvs(const char* key);
 
 #ifdef __cplusplus
 }

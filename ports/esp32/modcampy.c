@@ -15,6 +15,12 @@
 #include <stdarg.h>
 
 
+/**
+ * @brief   Active camera singleton pointer
+ */
+static struct campy_Camera* _activeCamera;
+
+
 #define TAG "camera"
 
 
@@ -66,7 +72,7 @@ static camera_config_t camera_config =
     .pixel_format = PIXFORMAT_JPEG,//YUV422,GRAYSCALE,RGB565,JPEG
     .frame_size   = FRAMESIZE_UXGA,//QQVGA-UXGA Do not use sizes above QVGA when not JPEG
     
-    .jpeg_quality = 10, //0-63 lower number means higher quality
+    .jpeg_quality = 4,  //0-63 lower number means higher quality
     .fb_count     = 1   //if more than one, i2s runs in continuous mode. Use only with JPEG
 };
 
@@ -76,32 +82,13 @@ static camera_config_t camera_config =
 #include "esp_spi_flash.h"
 
 
-MP_FN_0(campy, init)
-{
-    esp_err_t err = esp_camera_init(&camera_config);
-    
-    if (err != ESP_OK)
-    {
-        mp_raise_msg(&mp_type_Exception, MP_ERROR_TEXT("Camera Init Failed"));
-    }
-    
-    return mp_const_none;
-}
 
 
-MP_FN_0(campy, deinit)
-{
-    esp_err_t err = esp_camera_deinit();
-    
-    if (err != ESP_OK)
-    {
-        mp_raise_msg(&mp_type_Exception, MP_ERROR_TEXT("Camera deinit Failed"));
-    }
-    
-    return mp_const_true;
-}
-
-
+/*
+ *******************************************************************************
+ * campy.FrameBuffer class
+ *******************************************************************************
+ */
 STATIC mp_obj_t MP_NAMESPACE3(campy, FrameBuffer, __init__)(const mp_obj_type_t* aType,
                                                             size_t               aArgsCnt,
                                                             size_t               aKw,
@@ -125,9 +112,9 @@ STATIC void MP_NAMESPACE3(campy, FrameBuffer, __str__)(const mp_print_t* aPrint,
 }
 
 
-STATIC void MP_NAMESPACE3(campy, FrameBuffer, __property__)(mp_obj_t  aSelf,
-                                                            qstr      aAttribute,
-                                                            mp_obj_t* aDestination)
+STATIC void MP_NAMESPACE3(campy, FrameBuffer, __attr__)(mp_obj_t  aSelf,
+                                                        qstr      aAttribute,
+                                                        mp_obj_t* aDestination)
 {
     struct campy_FrameBuffer* self = MP_OBJ_TO_PTR(aSelf);
     
@@ -135,42 +122,96 @@ STATIC void MP_NAMESPACE3(campy, FrameBuffer, __property__)(mp_obj_t  aSelf,
     {
         case MP_QSTR_data:
             {
-                mp_obj_str_t* bytes = m_new_obj(mp_obj_str_t);
+                mp_obj_str_t* bytes              = m_new_obj(mp_obj_str_t);
                 
-                bytes->base.type = &mp_type_bytes;
-                bytes->data      = (const byte*)self->fb.buf;
-                bytes->len       = self->fb.len;
-                bytes->hash      = qstr_compute_hash(bytes->data, bytes->len);
+                bytes->base.type                 = &mp_type_bytes;
+                bytes->data                      = (const byte*)self->fb.buf;
+                bytes->len                       = self->fb.len;
+                bytes->hash                      = qstr_compute_hash(bytes->data, bytes->len);
                 
-                *aDestination = bytes;
+                aDestination[MP_ATTR_FROM_CLASS] = bytes;
                 break;
             }
             
             
         case MP_QSTR_width:
             {
-                *aDestination = MP_OBJ_NEW_SMALL_INT(self->fb.width);
+                aDestination[MP_ATTR_FROM_CLASS] = MP_OBJ_NEW_SMALL_INT(self->fb.width);
                 break;
             }
             
             
         case MP_QSTR_height:
             {
-                *aDestination = MP_OBJ_NEW_SMALL_INT(self->fb.height);
+                aDestination[MP_ATTR_FROM_CLASS] = MP_OBJ_NEW_SMALL_INT(self->fb.height);
                 break;
             }
+            
+        default:
+            MP_METHOD_LOOKUP(aSelf, aAttribute, aDestination);
     }
 }
 
 
-MP_CLASS_BEGIN(campy, FrameBuffer)
-MP_CLASS_END
+MP_CLASS_BEGIN( campy, FrameBuffer )
+MP_CLASS_END(   campy, FrameBuffer )
 
 
-MP_FN_0(campy,capture)
+
+
+/*
+ *******************************************************************************
+ * campy.Camera class
+ *******************************************************************************
+ */
+STATIC mp_obj_t MP_NAMESPACE3(campy, Camera, __init__)(const mp_obj_type_t* aType,
+                                                       size_t               aArgsCnt,
+                                                       size_t               aKw,
+                                                       const mp_obj_t*      aArgs)
 {
-    //acquire a frame
+    /*
+     * If we initializing after previous camera initialization, then we shall
+     * call de-init first bo stop previous camera instance.
+     */
+    if (NULL != _activeCamera)
+    {
+        if (ESP_OK != esp_camera_deinit())
+        {
+            mp_raise_msg(&mp_type_Exception, MP_ERROR_TEXT("Camera re-initialization failed"));
+        }
+        
+        _activeCamera = NULL;
+    }
+    
+    /*
+     * Now allocate new camera object and initialize it
+     */
+    struct campy_Camera*   activeCamera = campy_Camera_new(&camera_config);
+    campy_Camera_init(     activeCamera);
+    _activeCamera        = activeCamera;
+    return MP_OBJ_FROM_PTR(activeCamera);
+}
+
+
+STATIC void MP_NAMESPACE3(campy, Camera, __str__)(const mp_print_t* aPrint,
+                                                  mp_obj_t          aSelf,
+                                                  mp_print_kind_t   aKind)
+{
+    struct campy_Camera* self = MP_OBJ_TO_PTR(aSelf);
+    
+    if (_activeCamera != self)
+    {
+        mp_raise_msg(&mp_type_Exception, MP_ERROR_TEXT("This camera was replaced by another active camera"));
+    }
+    
+    mp_printf(aPrint, "Camera(%s)", self->model);
+}
+
+
+MP_FN_1(campy__Camera, capture, aSelf)
+{
     camera_fb_t* fb = esp_camera_fb_get();
+    
     if (!fb)
     {
         ESP_LOGE(TAG, "Camera Capture Failed");
@@ -183,16 +224,56 @@ MP_FN_0(campy,capture)
                                            fb->buf,
                                            fb->len);
     
-//    return the frame buffer back to the driver for reuse
     esp_camera_fb_return(fb);
     
     return frame;
 }
 
 
-MP_MODULE_BEGIN( campy)
-MP_MEMBER(       campy, init)
-MP_MEMBER(       campy, deinit)
-MP_MEMBER(       campy, capture)
-MP_MEMBER(       campy, FrameBuffer)
-MP_MODULE_END(   campy)
+STATIC void MP_NAMESPACE3(campy, Camera, __attr__)(mp_obj_t  aSelf,
+                                                   qstr      aAttribute,
+                                                   mp_obj_t* aDestination)
+{
+    struct campy_Camera* self = MP_OBJ_TO_PTR(aSelf);
+    
+    if (_activeCamera != self)
+    {
+        mp_raise_msg(&mp_type_Exception, MP_ERROR_TEXT("This camera was replaced by another active camera"));
+    }
+    
+    switch (aAttribute)
+    {
+        case MP_QSTR_model:
+            {
+                mp_obj_str_t* str                = m_new_obj(mp_obj_str_t);
+                
+                str->base.type                   = &mp_type_str;
+                str->data                        = (const byte*)self->model;
+                str->len                         = strlen(self->model);
+                str->hash                        = qstr_compute_hash(str->data, str->len);
+                
+                aDestination[MP_ATTR_FROM_CLASS] = str;
+                break;
+            }
+            
+        default:
+            MP_METHOD_LOOKUP(aSelf, aAttribute, aDestination);
+    }
+}
+
+
+MP_CLASS_BEGIN( campy, Camera          )
+MP_FN(          campy__Camera, capture )
+MP_CLASS_END(   campy, Camera          )
+
+
+
+
+/*
+ *******************************************************************************
+ * campy module
+ *******************************************************************************
+ */
+MP_MODULE_BEGIN( campy         )
+MP_MEMBER(       campy, Camera )
+MP_MODULE_END(   campy         )

@@ -24,7 +24,8 @@ esp_err_t xclk_timer_conf(int ledc_timer, int xclk_freq_hz)
 #endif
     timer_conf.timer_num = (ledc_timer_t)ledc_timer;
     esp_err_t err = ledc_timer_config(&timer_conf);
-    if (err != ESP_OK) {
+    if (err != ESP_OK)
+    {
         ESP_LOGE(TAG, "ledc_timer_config failed for freq %d, rc=%x", xclk_freq_hz, err);
     }
     return err;
@@ -33,13 +34,14 @@ esp_err_t xclk_timer_conf(int ledc_timer, int xclk_freq_hz)
 esp_err_t camera_enable_out_clock(camera_config_t* config)
 {
     periph_module_enable(PERIPH_LEDC_MODULE);
-
+    
     esp_err_t err = xclk_timer_conf(config->ledc_timer, config->xclk_freq_hz);
-    if (err != ESP_OK) {
+    if (err != ESP_OK)
+    {
         ESP_LOGE(TAG, "ledc_timer_config failed, rc=%x", err);
         return err;
     }
-
+    
     ledc_channel_config_t ch_conf;
     ch_conf.gpio_num = config->pin_xclk;
     ch_conf.speed_mode = LEDC_HIGH_SPEED_MODE;
@@ -49,7 +51,8 @@ esp_err_t camera_enable_out_clock(camera_config_t* config)
     ch_conf.duty = 2;
     ch_conf.hpoint = 0;
     err = ledc_channel_config(&ch_conf);
-    if (err != ESP_OK) {
+    if (err != ESP_OK)
+    {
         ESP_LOGE(TAG, "ledc_channel_config failed, rc=%x", err);
         return err;
     }

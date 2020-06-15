@@ -186,7 +186,7 @@ static int calc_sysclk(int xclk, bool pll_bypass, int pll_multiplier, int pll_sy
     unsigned int root_2x_div = root_2x?2:1;
     unsigned int pll_pclk_root_div = pll_pclk_root_div_map[pclk_root_div];
 
-    unsigned int REFIN = xclk / pll_pre_div;
+    unsigned int REFIN = (unsigned int)((float)xclk / pll_pre_div);
 
     unsigned int VCO = REFIN * pll_multiplier / root_2x_div;
 

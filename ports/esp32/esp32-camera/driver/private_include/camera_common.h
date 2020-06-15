@@ -15,15 +15,17 @@
 #if ESP_IDF_VERSION_MAJOR >= 4 // IDF 4+
 #if CONFIG_IDF_TARGET_ESP32 // ESP32/PICO-D4
 #include "esp32/rom/lldesc.h"
-#else 
+#else
 #error Target CONFIG_IDF_TARGET is not supported
 #endif
 #else // ESP32 Before IDF 4.0
 #include "rom/lldesc.h"
 #endif
 
-typedef union {
-    struct {
+typedef union
+{
+    struct
+    {
         uint8_t sample2;
         uint8_t unused2;
         uint8_t sample1;
@@ -32,7 +34,8 @@ typedef union {
     uint32_t val;
 } dma_elem_t;
 
-typedef enum {
+typedef enum
+{
     /* camera sends byte sequence: s1, s2, s3, s4, ...
      * fifo receives: 00 s1 00 s2, 00 s2 00 s3, 00 s3 00 s4, ...
      */

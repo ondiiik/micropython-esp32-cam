@@ -1,6 +1,7 @@
 #include "sensor.h"
 
-const resolution_info_t resolution[FRAMESIZE_INVALID] = {
+const resolution_info_t resolution[FRAMESIZE_INVALID] =
+{
     {   96,   96, ASPECT_RATIO_1X1   }, /* 96x96 */
     {  160,  120, ASPECT_RATIO_4X3   }, /* QQVGA */
     {  176,  144, ASPECT_RATIO_5X4   }, /* QCIF  */

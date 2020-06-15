@@ -259,9 +259,9 @@ CFLAGS_MOD += -DMICROPY_PY_BLUETOOTH_ENABLE_CENTRAL_MODE=1
 endif
 
 CFLAGS_MOD += -DCONFIG_OV2640_SUPPORT
-#CFLAGS_MOD += -DCONFIG_OV7725_SUPPORT
-#CFLAGS_MOD += -DCONFIG_OV3660_SUPPORT
-#CFLAGS_MOD += -DCONFIG_OV5640_SUPPORT
+CFLAGS_MOD += -DCONFIG_OV7725_SUPPORT
+CFLAGS_MOD += -DCONFIG_OV3660_SUPPORT
+CFLAGS_MOD += -DCONFIG_OV5640_SUPPORT
 
 # these flags are common to C and C++ compilation
 CFLAGS_COMMON = -Os -ffunction-sections -fdata-sections -fstrict-volatile-bitfields \
@@ -359,9 +359,9 @@ SRC_C += esp32-camera/driver/sensor.c
 SRC_C += esp32-camera/driver/twi.c
 SRC_C += esp32-camera/driver/xclk.c
 SRC_C += esp32-camera/sensors/ov2640.c
-#SRC_C += esp32-camera/sensors/ov3660.c
-#SRC_C += esp32-camera/sensors/ov5640.c
-#SRC_C += esp32-camera/sensors/ov7725.c
+SRC_C += esp32-camera/sensors/ov3660.c
+SRC_C += esp32-camera/sensors/ov5640.c
+SRC_C += esp32-camera/sensors/ov7725.c
 SRC_C += modcampy.c
 SRC_C += esp32_partition.c
 SRC_C += esp32_rmt.c
