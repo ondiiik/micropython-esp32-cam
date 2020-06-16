@@ -161,6 +161,14 @@ esp_err_t esp_camera_save_to_nvs(const char* key);
  */
 esp_err_t esp_camera_load_from_nvs(const char* key);
 
+
+
+
+
+
+extern void _esp_camera_recalculate_compression(int aJpegQuality);
+
+
 #ifdef __cplusplus
 }
 #endif

@@ -1120,6 +1120,8 @@ esp_err_t camera_probe(const camera_config_t* config, camera_model_t* out_camera
     return ESP_OK;
 }
 
+
+
 static void camera_init(const camera_config_t* config)
 {
     if (NULL == s_state)
@@ -1260,21 +1262,12 @@ static void camera_init(const camera_config_t* config)
             mp_raise_msg(&mp_type_Exception, MP_ERROR_TEXT("JPEG format is only supported for ov2640, ov3660 and ov5640"));
         }
         
-        int compression_ratio_bound = 4;
-        
-        if (config->jpeg_quality > 10)
-        {
-            compression_ratio_bound = 16;
-        }
-        else if (config->jpeg_quality > 5)
-        {
-            compression_ratio_bound = 10;
-        }
-        
-        (*s_state->sensor.set_quality)(&s_state->sensor, compression_ratio_bound);
+        (*s_state->sensor.set_quality)(&s_state->sensor, config->jpeg_quality);
         s_state->in_bytes_per_pixel = 2;
         s_state->fb_bytes_per_pixel = 2;
-        s_state->fb_size            = (s_state->width * s_state->height * s_state->fb_bytes_per_pixel) / compression_ratio_bound;
+        
+        _esp_camera_recalculate_compression(config->jpeg_quality);
+        
         s_state->dma_filter         = &dma_filter_jpeg;
         s_state->sampling_mode      = SM_0A00_0B00;
     }
@@ -1382,13 +1375,24 @@ static void camera_init(const camera_config_t* config)
     
     skip_frame();
     
-    //todo: for some reason the first set of the quality does not work.
-    if (pix_format == PIXFORMAT_JPEG)
+    s_state->sensor.init_status(&s_state->sensor);
+}
+
+
+void _esp_camera_recalculate_compression(int aJpegQuality)
+{
+    int compression_ratio_bound = 4;
+    
+    if (aJpegQuality > 10)
     {
-        (*s_state->sensor.set_quality)(&s_state->sensor, config->jpeg_quality);
+        compression_ratio_bound = 16;
+    }
+    else if (aJpegQuality > 5)
+    {
+        compression_ratio_bound = 10;
     }
     
-    s_state->sensor.init_status(&s_state->sensor);
+    s_state->fb_size = (s_state->width * s_state->height * s_state->fb_bytes_per_pixel) / compression_ratio_bound;
 }
 
 

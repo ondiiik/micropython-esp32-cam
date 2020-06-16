@@ -70,8 +70,8 @@ static camera_config_t camera_config =
     .pixel_format = PIXFORMAT_JPEG,//YUV422,GRAYSCALE,RGB565,JPEG
     .frame_size   = FRAMESIZE_UXGA,//QQVGA-UXGA Do not use sizes above QVGA when not JPEG
     
-    .jpeg_quality = 4,  //0-63 lower number means higher quality
-    .fb_count     = 1   //if more than one, i2s runs in continuous mode. Use only with JPEG
+    .jpeg_quality = 12,  //0-63 lower number means higher quality
+    .fb_count     = 1    //if more than one, i2s runs in continuous mode. Use only with JPEG
 };
 
 
@@ -80,6 +80,24 @@ static camera_config_t camera_config =
 #include "esp_spi_flash.h"
 
 
+
+
+/*
+ *******************************************************************************
+ * Helpers
+ *******************************************************************************
+ */
+static mp_obj_t _rom_str_obj(const char* aStr)
+{
+    mp_obj_str_t* str = m_new_obj(mp_obj_str_t);
+    
+    str->base.type    = &mp_type_str;
+    str->data         = (const byte*)aStr;
+    str->len          = strlen(aStr);
+    str->hash         = qstr_compute_hash(str->data, str->len);
+    
+    return str;
+}
 
 
 /*
@@ -126,14 +144,14 @@ STATIC mp_obj_t MP_NAMESPACE2(campy__FrameBuffer, data)(mp_obj_t  aSelf)
 
 STATIC mp_obj_t MP_NAMESPACE2(campy__FrameBuffer, width)(mp_obj_t  aSelf)
 {
-    struct campy_FrameBuffer* self  = MP_OBJ_TO_PTR(aSelf);
+    struct campy_FrameBuffer* self = MP_OBJ_TO_PTR(aSelf);
     return MP_OBJ_NEW_SMALL_INT(self->width);
 }
 
 
 STATIC mp_obj_t MP_NAMESPACE2(campy__FrameBuffer, height)(mp_obj_t  aSelf)
 {
-    struct campy_FrameBuffer* self  = MP_OBJ_TO_PTR(aSelf);
+    struct campy_FrameBuffer* self = MP_OBJ_TO_PTR(aSelf);
     return MP_OBJ_NEW_SMALL_INT(self->height);
 }
 
@@ -203,6 +221,9 @@ STATIC mp_obj_t MP_NAMESPACE3(campy, Camera, __init__)(const mp_obj_type_t* aTyp
      */
     struct campy_Camera*   activeCamera = campy_Camera_new(&camera_config);
     campy_Camera_init(     activeCamera);
+    
+    activeCamera->sensor = esp_camera_sensor_get();
+    
     _activeCamera        = activeCamera;
     return MP_OBJ_FROM_PTR(activeCamera);
 }
@@ -223,6 +244,62 @@ STATIC void MP_NAMESPACE3(campy, Camera, __str__)(const mp_print_t* aPrint,
 }
 
 
+STATIC mp_obj_t MP_NAMESPACE2(campy__Camera, model)(mp_obj_t  aSelf)
+{
+    struct campy_Camera* self = MP_OBJ_TO_PTR(aSelf);
+    
+    if (_activeCamera != self)
+    {
+        mp_raise_msg(&mp_type_Exception, MP_ERROR_TEXT("This camera was replaced by another active camera"));
+    }
+    
+    return mp_obj_new_str(self->model, strlen(self->model));
+}
+
+
+STATIC mp_obj_t MP_NAMESPACE2(campy__Camera, jpeg_quality)(mp_obj_t  aSelf)
+{
+    struct campy_Camera* self = MP_OBJ_TO_PTR(aSelf);
+    return MP_OBJ_NEW_SMALL_INT(self->config.jpeg_quality);
+}
+
+
+STATIC mp_obj_t MP_NAMESPACE2(campy__Camera, frame_size)(mp_obj_t  aSelf)
+{
+#   define SIZE_CASE(_size_) case FRAMESIZE_##_size_: return mp_obj_new_str(#_size_, sizeof(#_size_) - 1)
+    
+    struct campy_Camera* self = MP_OBJ_TO_PTR(aSelf);
+    
+    switch (self->config.frame_size)
+    {
+        SIZE_CASE(96X96);
+        SIZE_CASE(QQVGA);
+        SIZE_CASE(QCIF);
+        SIZE_CASE(HQVGA);
+        SIZE_CASE(240X240);
+        SIZE_CASE(QVGA);
+        SIZE_CASE(CIF);
+        SIZE_CASE(HVGA);
+        SIZE_CASE(VGA);
+        SIZE_CASE(SVGA);
+        SIZE_CASE(XGA);
+        SIZE_CASE(HD);
+        SIZE_CASE(SXGA);
+        SIZE_CASE(UXGA);
+        SIZE_CASE(FHD);
+        SIZE_CASE(P_HD);
+        SIZE_CASE(P_3MP);
+        SIZE_CASE(QXGA);
+        SIZE_CASE(QHD);
+        SIZE_CASE(WQXGA);
+        SIZE_CASE(P_FHD);
+        SIZE_CASE(QSXGA);
+        default:
+            return mp_obj_new_str("<?>", sizeof("<?>") - 1);
+    }
+}
+
+
 MP_FN_1(campy__Camera, capture, aSelf)
 {
     struct campy_Camera* self = MP_OBJ_TO_PTR(aSelf);
@@ -236,8 +313,11 @@ MP_FN_1(campy__Camera, capture, aSelf)
 }
 
 
-STATIC mp_obj_t MP_NAMESPACE2(campy__Camera, model)(mp_obj_t  aSelf)
+MP_FN_2(campy__Camera, set_jpeg_quality, aSelf, aQuality)
 {
+    /*
+     * Checks all arguments if they are suitable to request
+     */
     struct campy_Camera* self = MP_OBJ_TO_PTR(aSelf);
     
     if (_activeCamera != self)
@@ -245,16 +325,33 @@ STATIC mp_obj_t MP_NAMESPACE2(campy__Camera, model)(mp_obj_t  aSelf)
         mp_raise_msg(&mp_type_Exception, MP_ERROR_TEXT("This camera was replaced by another active camera"));
     }
     
-    mp_obj_str_t* str = m_new_obj(mp_obj_str_t);
+    if (PIXFORMAT_JPEG != self->config.pixel_format)
+    {
+        mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("quality can be set only for JPEG"));
+    }
     
-    str->base.type    = &mp_type_str;
-    str->data         = (const byte*)self->model;
-    str->len          = strlen(self->model);
-    str->hash         = qstr_compute_hash(str->data, str->len);
+    if (!mp_obj_is_small_int(aQuality))
+    {
+        mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("quality shall be integer in range 4 .. 64"));
+    }
     
-    return str;
+    int q = MP_OBJ_SMALL_INT_VALUE(aQuality);
+    
+    if ((q < 4) || (q > 64))
+    {
+        mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("quality shall be integer in range 4 .. 64"));
+    }
+    
+    
+    /*
+     * Call sensor driver to modify sensor quality settings and recalculate buffers sizes
+     */
+    self->config.jpeg_quality             = q;
+    self->sensor->set_quality(self->sensor, q);
+    _esp_camera_recalculate_compression(    q);
+    
+    return mp_const_none;
 }
-
 
 
 STATIC void MP_NAMESPACE3(campy, Camera, __attr__)(mp_obj_t  aSelf,
@@ -263,8 +360,11 @@ STATIC void MP_NAMESPACE3(campy, Camera, __attr__)(mp_obj_t  aSelf,
 {
     switch (aAttribute)
     {
-        MP_ATTR_PROPERTY(campy__Camera, model,   aSelf);
-        MP_ATTR_METHOD(  campy__Camera, capture, aSelf);
+        MP_ATTR_METHOD(  campy__Camera, capture,          aSelf);
+        MP_ATTR_METHOD(  campy__Camera, set_jpeg_quality, aSelf);
+        MP_ATTR_PROPERTY(campy__Camera, model,            aSelf);
+        MP_ATTR_PROPERTY(campy__Camera, jpeg_quality,     aSelf);
+        MP_ATTR_PROPERTY(campy__Camera, frame_size,       aSelf);
     }
 }
 

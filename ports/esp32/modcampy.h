@@ -72,6 +72,7 @@ struct campy_Camera
 {
     mp_obj_base_t   base;       /**< @brief Type object */
     camera_config_t config;     /**< @brief Frame buffer structure */
+    sensor_t*       sensor;     /**< @brief Sensor control commands */
     char            model[7];   /**< @brief Camera model string */
 };
 

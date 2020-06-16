@@ -68,3 +68,9 @@
     STATIC mp_obj_t                                                 mpy__##_parent_##__##_member_##_##_F(const mp_obj_t _a1_); \
     STATIC MP_DEFINE_CONST_FUN_OBJ_1(mpy__##_parent_##__##_member_, mpy__##_parent_##__##_member_##_##_F); \
     mp_obj_t                                                        mpy__##_parent_##__##_member_##_##_F(const mp_obj_t _a1_)
+
+
+#define MP_FN_2(_parent_, _member_, _a1_, _a2_) \
+    STATIC mp_obj_t                                                 mpy__##_parent_##__##_member_##_##_F(const mp_obj_t _a1_, const mp_obj_t _a2_); \
+    STATIC MP_DEFINE_CONST_FUN_OBJ_2(mpy__##_parent_##__##_member_, mpy__##_parent_##__##_member_##_##_F); \
+    mp_obj_t                                                        mpy__##_parent_##__##_member_##_##_F(const mp_obj_t _a1_, const mp_obj_t _a2_)
