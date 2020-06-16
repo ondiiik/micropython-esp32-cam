@@ -103,7 +103,7 @@ STATIC void MP_NAMESPACE3(campy, FrameBuffer, __str__)(const mp_print_t* aPrint,
 {
     struct campy_FrameBuffer* self = MP_OBJ_TO_PTR(aSelf);
     mp_printf(aPrint,
-              "FrameBuffer(JPEG:%dx%d:%d)",
+              "<FrameBuffer JPEG:%dx%d:%d>",
               self->width,
               self->height,
               self->len);
@@ -138,15 +138,33 @@ STATIC mp_obj_t MP_NAMESPACE2(campy__FrameBuffer, height)(mp_obj_t  aSelf)
 }
 
 
+MP_FN_1(campy__FrameBuffer, reducto, aSelf)
+{
+    struct campy_FrameBuffer* self  = MP_OBJ_TO_PTR(aSelf);
+    
+    if (self->len != 0)
+    {
+        m_free(self->buf);
+        self->buf    = NULL;
+        self->len    = 0;
+        self->width  = 0;
+        self->height = 0;
+    }
+    
+    return mp_const_none;
+}
+
+
 STATIC void MP_NAMESPACE3(campy, FrameBuffer, __attr__)(mp_obj_t  aSelf,
                                                         qstr      aAttribute,
                                                         mp_obj_t* aDestination)
 {
     switch (aAttribute)
     {
-        MP_ATTR_PROPERTY(campy__FrameBuffer, data,   aSelf);
-        MP_ATTR_PROPERTY(campy__FrameBuffer, width,  aSelf);
-        MP_ATTR_PROPERTY(campy__FrameBuffer, height, aSelf);
+        MP_ATTR_PROPERTY(campy__FrameBuffer, data,    aSelf);
+        MP_ATTR_METHOD(  campy__FrameBuffer, reducto, aSelf);
+        MP_ATTR_PROPERTY(campy__FrameBuffer, width,   aSelf);
+        MP_ATTR_PROPERTY(campy__FrameBuffer, height,  aSelf);
     }
 }
 
@@ -201,7 +219,7 @@ STATIC void MP_NAMESPACE3(campy, Camera, __str__)(const mp_print_t* aPrint,
         mp_raise_msg(&mp_type_Exception, MP_ERROR_TEXT("This camera was replaced by another active camera"));
     }
     
-    mp_printf(aPrint, "Camera(%s)", self->model);
+    mp_printf(aPrint, "<Camera %s>", self->model);
 }
 
 
