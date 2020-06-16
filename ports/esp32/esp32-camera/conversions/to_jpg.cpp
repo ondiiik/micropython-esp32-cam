@@ -115,20 +115,20 @@ bool convert_image(uint8_t *src, uint16_t width, uint16_t height, pixformat_t fo
     jpge::jpeg_encoder dst_image;
 
     if (!dst_image.init(dst_stream, width, height, num_channels, comp_params)) {
-        ESP_LOGE(TAG, "JPG encoder init failed");
+        MP_LOGE(TAG, "JPG encoder init failed");
         return false;
     }
 
     uint8_t* line = (uint8_t*)_malloc(width * num_channels);
     if(!line) {
-        ESP_LOGE(TAG, "Scan line malloc failed");
+        MP_LOGE(TAG, "Scan line malloc failed");
         return false;
     }
 
     for (int i = 0; i < height; i++) {
         convert_line_format(src, format, line, width, num_channels, i);
         if (!dst_image.process_scanline(line)) {
-            ESP_LOGE(TAG, "JPG process line %u failed", i);
+            MP_LOGE(TAG, "JPG process line %u failed", i);
             m_free(line);
             return false;
         }
@@ -136,7 +136,7 @@ bool convert_image(uint8_t *src, uint16_t width, uint16_t height, pixformat_t fo
     m_free(line);
 
     if (!dst_image.process_scanline(NULL)) {
-        ESP_LOGE(TAG, "JPG image finish failed");
+        MP_LOGE(TAG, "JPG image finish failed");
         return false;
     }
     dst_image.deinit();
@@ -169,7 +169,7 @@ bool fmt2jpg_cb(uint8_t *src, size_t src_len, uint16_t width, uint16_t height, p
     return convert_image(src, width, height, format, quality, &dst_stream);
 }
 
-bool frame2jpg_cb(camera_fb_t * fb, uint8_t quality, jpg_out_cb cb, void * arg)
+bool frame2jpg_cb(struct campy_FrameBuffer * fb, uint8_t quality, jpg_out_cb cb, void * arg)
 {
     return fmt2jpg_cb(fb->buf, fb->len, fb->width, fb->height, fb->format, quality, cb, arg);
 }
@@ -193,7 +193,7 @@ public:
             return true;
         }
         if ((size_t)len > (max_len - index)) {
-            ESP_LOGW(TAG, "JPG output overflow: %d bytes", len - (max_len - index));
+            MP_LOGW(TAG, "JPG output overflow: %d bytes", len - (max_len - index));
             len = max_len - index;
         }
         if (len) {
@@ -218,7 +218,7 @@ bool fmt2jpg(uint8_t *src, size_t src_len, uint16_t width, uint16_t height, pixf
 
     uint8_t * jpg_buf = (uint8_t *)_malloc(jpg_buf_len);
     if(jpg_buf == NULL) {
-        ESP_LOGE(TAG, "JPG buffer malloc failed");
+        MP_LOGE(TAG, "JPG buffer malloc failed");
         return false;
     }
     memory_stream dst_stream(jpg_buf, jpg_buf_len);
@@ -233,7 +233,7 @@ bool fmt2jpg(uint8_t *src, size_t src_len, uint16_t width, uint16_t height, pixf
     return true;
 }
 
-bool frame2jpg(camera_fb_t * fb, uint8_t quality, uint8_t ** out, size_t * out_len)
+bool frame2jpg(struct campy_FrameBuffer * fb, uint8_t quality, uint8_t ** out, size_t * out_len)
 {
     return fmt2jpg(fb->buf, fb->len, fb->width, fb->height, fb->format, quality, out, out_len);
 }

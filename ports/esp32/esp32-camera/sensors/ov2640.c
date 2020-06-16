@@ -576,6 +576,6 @@ int ov2640_init(sensor_t *sensor)
     sensor->set_res_raw = set_res_raw;
     sensor->set_pll = _set_pll;
     sensor->set_xclk = set_xclk;
-    ESP_LOGD(TAG, "OV2640 Attached");
+    MP_LOGD(TAG, "OV2640 Attached");
     return 0;
 }

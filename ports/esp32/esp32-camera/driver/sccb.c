@@ -46,7 +46,7 @@ static uint8_t ESP_SLAVE_ADDR   = 0x3c;
 
 int SCCB_Init(int pin_sda, int pin_scl)
 {
-    ESP_LOGI(TAG, "pin_sda %d pin_scl %d", pin_sda, pin_scl);
+    MP_LOGI(TAG, "pin_sda %d pin_scl %d", pin_sda, pin_scl);
 #ifdef CONFIG_SCCB_HARDWARE_I2C
     //log_i("SCCB_Init start");
     i2c_config_t conf;
@@ -89,7 +89,7 @@ uint8_t SCCB_Probe()
     uint8_t reg = 0x00;
     uint8_t slv_addr = 0x00;
     
-    ESP_LOGI(TAG, "SCCB_Probe start");
+    MP_LOGI(TAG, "SCCB_Probe start");
     for (uint8_t i = 0; i < 127; i++)
     {
         if (twi_writeTo(i, &reg, 1, true) == 0)
@@ -132,7 +132,7 @@ uint8_t SCCB_Read(uint8_t slv_addr, uint8_t reg)
     i2c_cmd_link_delete(cmd);
     if (ret != ESP_OK)
     {
-        ESP_LOGE(TAG, "SCCB_Read Failed addr:0x%02x, reg:0x%02x, data:0x%02x, ret:%d", slv_addr, reg, data, ret);
+        MP_LOGE(TAG, "SCCB_Read Failed addr:0x%02x, reg:0x%02x, data:0x%02x, ret:%d", slv_addr, reg, data, ret);
     }
     return data;
 #else
@@ -153,7 +153,7 @@ uint8_t SCCB_Read(uint8_t slv_addr, uint8_t reg)
     }
     if (rc != 0)
     {
-        ESP_LOGE(TAG, "SCCB_Read [%02x] failed rc=%d", reg, rc);
+        MP_LOGE(TAG, "SCCB_Read [%02x] failed rc=%d", reg, rc);
     }
     return data;
 #endif
@@ -173,7 +173,7 @@ uint8_t SCCB_Write(uint8_t slv_addr, uint8_t reg, uint8_t data)
     i2c_cmd_link_delete(cmd);
     if (ret != ESP_OK)
     {
-        ESP_LOGE(TAG, "SCCB_Write Failed addr:0x%02x, reg:0x%02x, data:0x%02x, ret:%d", slv_addr, reg, data, ret);
+        MP_LOGE(TAG, "SCCB_Write Failed addr:0x%02x, reg:0x%02x, data:0x%02x, ret:%d", slv_addr, reg, data, ret);
     }
     return ret == ESP_OK ? 0 : -1;
 #else
@@ -186,7 +186,7 @@ uint8_t SCCB_Write(uint8_t slv_addr, uint8_t reg, uint8_t data)
     }
     if (ret != 0)
     {
-        ESP_LOGE(TAG, "SCCB_Write [%02x]=%02x failed", reg, data);
+        MP_LOGE(TAG, "SCCB_Write [%02x]=%02x failed", reg, data);
     }
     return ret;
 #endif
@@ -220,7 +220,7 @@ uint8_t SCCB_Read16(uint8_t slv_addr, uint16_t reg)
     i2c_cmd_link_delete(cmd);
     if (ret != ESP_OK)
     {
-        ESP_LOGE(TAG, "W [%04x]=%02x fail", reg, data);
+        MP_LOGE(TAG, "W [%04x]=%02x fail", reg, data);
     }
     return data;
 #else
@@ -244,7 +244,7 @@ uint8_t SCCB_Read16(uint8_t slv_addr, uint16_t reg)
     }
     if (rc != 0)
     {
-        ESP_LOGE(TAG, "R [%04x] fail rc=%d", reg, rc);
+        MP_LOGE(TAG, "R [%04x] fail rc=%d", reg, rc);
     }
     return data;
 #endif
@@ -268,7 +268,7 @@ uint8_t SCCB_Write16(uint8_t slv_addr, uint16_t reg, uint8_t data)
     i2c_cmd_link_delete(cmd);
     if (ret != ESP_OK)
     {
-        ESP_LOGE(TAG, "W [%04x]=%02x %d fail", reg, data, i++);
+        MP_LOGE(TAG, "W [%04x]=%02x %d fail", reg, data, i++);
     }
     return ret == ESP_OK ? 0 : -1;
 #else
@@ -283,7 +283,7 @@ uint8_t SCCB_Write16(uint8_t slv_addr, uint16_t reg, uint8_t data)
     }
     if (ret != 0)
     {
-        ESP_LOGE(TAG, "W [%04x]=%02x %d fail", reg, data, i++);
+        MP_LOGE(TAG, "W [%04x]=%02x %d fail", reg, data, i++);
     }
     return ret;
 #endif

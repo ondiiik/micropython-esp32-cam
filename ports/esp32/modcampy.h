@@ -14,10 +14,12 @@
 #pragma once
 
 
-#include "esp_camera.h"
 #include "mp_namespace.h"
 #include "py/obj.h"
 #include <stddef.h>
+
+#include "sensor.h"
+#include "sys/time.h"
 
 
 /**
@@ -26,7 +28,16 @@
 struct campy_FrameBuffer
 {
     mp_obj_base_t base;   /**< @brief Type object */
-    camera_fb_t   fb;     /**< @brief Frame buffer structure */
+    uint8_t* buf;               /*!< Pointer to the pixel data */
+    size_t len;                 /*!< Length of the buffer in bytes */
+    size_t width;               /*!< Width of the buffer in pixels */
+    size_t height;              /*!< Height of the buffer in pixels */
+    pixformat_t format;         /*!< Format of the pixel data */
+    struct timeval timestamp;   /*!< Timestamp since boot of the first DMA buffer of the frame */
+    size_t size;
+    uint8_t ref;
+    uint8_t bad;
+    struct campy_FrameBuffer* next;
 };
 
 
@@ -53,6 +64,9 @@ extern struct campy_FrameBuffer* campy_FrameBuffer_new(unsigned    aWidth,
  * @brief   Python framebuffer structure
  */
 extern const mp_obj_type_t MP_NAMESPACE2(campy, FrameBuffer);
+
+
+#include "esp_camera.h"
 
 
 /**
@@ -99,3 +113,26 @@ void campy_Camera_init(struct campy_Camera* camera);
  * @brief   Python camera structure
  */
 extern const mp_obj_type_t MP_NAMESPACE2(campy, Camera);
+
+
+
+
+
+
+
+
+
+
+/**
+ * @brief Obtain pointer to a frame buffer.
+ *
+ * @return pointer to the frame buffer
+ */
+struct campy_FrameBuffer* esp_camera_fb_get();
+
+/**
+ * @brief Return the frame buffer to be reused again.
+ *
+ * @param fb    Pointer to the frame buffer
+ */
+void esp_camera_fb_return(struct campy_FrameBuffer* fb);

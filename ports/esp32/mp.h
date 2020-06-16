@@ -25,7 +25,7 @@ extern "C" {
 #endif
 
 
-#define ESP_LOG(_type_, _tag_, ...) \
+#define MP_LOG(_type_, _tag_, ...) \
     do \
     { \
         mp_printf(&mp_plat_print, "[%s] %s:%d", _type_, _tag_, __LINE__); \
@@ -34,18 +34,9 @@ extern "C" {
     } \
     while (false)
 
-#undef  ESP_LOGE
-#define ESP_LOGE(_tag_, ...) ESP_LOG("!!", _tag_, __VA_ARGS__)
-
-#undef  ESP_LOGW
-#define ESP_LOGW(_tag_, ...) ESP_LOG("**", _tag_, __VA_ARGS__)
-
-#undef  ESP_LOGI
-#define ESP_LOGI(_tag_, ...) ESP_LOG("..", _tag_, __VA_ARGS__)
-
-#undef  ESP_LOGD
-#define ESP_LOGD(_tag_, ...) ESP_LOG("  ", _tag_, __VA_ARGS__)
-
-#undef  ESP_LOGV
-#define ESP_LOGV(_tag_, ...) ESP_LOG("  ", _tag_, __VA_ARGS__)
+#define MP_LOGE(_tag_, ...) MP_LOG("!!", _tag_, __VA_ARGS__)
+#define MP_LOGW(_tag_, ...) MP_LOG("**", _tag_, __VA_ARGS__)
+#define MP_LOGI(_tag_, ...) MP_LOG("..", _tag_, __VA_ARGS__)
+#define MP_LOGD(_tag_, ...) MP_LOG("  ", _tag_, __VA_ARGS__)
+#define MP_LOGV(_tag_, ...) MP_LOG("  ", _tag_, __VA_ARGS__)
 

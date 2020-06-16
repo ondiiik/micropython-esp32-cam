@@ -22,6 +22,7 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 #include "esp_camera.h"
+#include "mp.h"
 
 typedef size_t (* jpg_out_cb)(void * arg, size_t index, const void* data, size_t len);
 
@@ -51,7 +52,7 @@ bool fmt2jpg_cb(uint8_t *src, size_t src_len, uint16_t width, uint16_t height, p
  *
  * @return true on success
  */
-bool frame2jpg_cb(camera_fb_t * fb, uint8_t quality, jpg_out_cb cb, void * arg);
+bool frame2jpg_cb(struct campy_FrameBuffer * fb, uint8_t quality, jpg_out_cb cb, void * arg);
 
 /**
  * @brief Convert image buffer to JPEG buffer
@@ -79,7 +80,7 @@ bool fmt2jpg(uint8_t *src, size_t src_len, uint16_t width, uint16_t height, pixf
  *
  * @return true on success
  */
-bool frame2jpg(camera_fb_t * fb, uint8_t quality, uint8_t ** out, size_t * out_len);
+bool frame2jpg(struct campy_FrameBuffer * fb, uint8_t quality, uint8_t ** out, size_t * out_len);
 
 /**
  * @brief Convert image buffer to BMP buffer
@@ -105,7 +106,7 @@ bool fmt2bmp(uint8_t *src, size_t src_len, uint16_t width, uint16_t height, pixf
  *
  * @return true on success
  */
-bool frame2bmp(camera_fb_t * fb, uint8_t ** out, size_t * out_len);
+bool frame2bmp(struct campy_FrameBuffer * fb, uint8_t ** out, size_t * out_len);
 
 /**
  * @brief Convert image buffer to RGB888 buffer (used for face detection)

@@ -3,8 +3,6 @@
 #include "esp_camera.h"
 #include "esp_log.h"
 
-
-
 #include "py/binary.h"
 #include "py/mpprint.h"
 #include "py/nlr.h"
@@ -106,9 +104,9 @@ STATIC void MP_NAMESPACE3(campy, FrameBuffer, __str__)(const mp_print_t* aPrint,
     struct campy_FrameBuffer* self = MP_OBJ_TO_PTR(aSelf);
     mp_printf(aPrint,
               "FrameBuffer(JPEG:%dx%d:%d)",
-              self->fb.width,
-              self->fb.height,
-              self->fb.len);
+              self->width,
+              self->height,
+              self->len);
 }
 
 
@@ -118,8 +116,8 @@ STATIC mp_obj_t MP_NAMESPACE2(campy__FrameBuffer, data)(mp_obj_t  aSelf)
     mp_obj_str_t*             bytes = m_new_obj(mp_obj_str_t);
     
     bytes->base.type    = &mp_type_bytes;
-    bytes->data         = (const byte*)self->fb.buf;
-    bytes->len          = self->fb.len;
+    bytes->data         = (const byte*)self->buf;
+    bytes->len          = self->len;
     bytes->hash         = qstr_compute_hash(bytes->data, bytes->len);
     
     return bytes;
@@ -129,14 +127,14 @@ STATIC mp_obj_t MP_NAMESPACE2(campy__FrameBuffer, data)(mp_obj_t  aSelf)
 STATIC mp_obj_t MP_NAMESPACE2(campy__FrameBuffer, width)(mp_obj_t  aSelf)
 {
     struct campy_FrameBuffer* self  = MP_OBJ_TO_PTR(aSelf);
-    return MP_OBJ_NEW_SMALL_INT(self->fb.width);
+    return MP_OBJ_NEW_SMALL_INT(self->width);
 }
 
 
 STATIC mp_obj_t MP_NAMESPACE2(campy__FrameBuffer, height)(mp_obj_t  aSelf)
 {
     struct campy_FrameBuffer* self  = MP_OBJ_TO_PTR(aSelf);
-    return MP_OBJ_NEW_SMALL_INT(self->fb.height);
+    return MP_OBJ_NEW_SMALL_INT(self->height);
 }
 
 
@@ -217,11 +215,11 @@ MP_FN_1(campy__Camera, capture, aSelf)
     }
     
     
-    camera_fb_t* fb = esp_camera_fb_get();
+    struct campy_FrameBuffer* fb = esp_camera_fb_get();
     
     if (!fb)
     {
-        ESP_LOGE(TAG, "Camera Capture Failed");
+        MP_LOGE(TAG, "Camera Capture Failed");
         return mp_const_false;
     }
     

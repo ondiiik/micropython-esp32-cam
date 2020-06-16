@@ -23,6 +23,8 @@
 static const char* TAG = "ov7725";
 #endif
 
+#include "mp.h"
+
 
 static const uint8_t default_regs[][2] = {
     {COM3,          COM3_SWAP_YUV},
@@ -342,7 +344,7 @@ static int set_dcw_dsp(sensor_t *sensor, int enable)
     int ret = 0;
     ret = set_reg_bits(sensor, 0x65, 2, 1, !enable);
     if (ret == 0) {
-        ESP_LOGD(TAG, "Set dcw to: %d", enable);
+        MP_LOGD(TAG, "Set dcw to: %d", enable);
         sensor->status.dcw = enable;
     }
     return ret;
@@ -353,7 +355,7 @@ static int set_aec2(sensor_t *sensor, int enable)
     int ret = 0;
     ret = set_reg_bits(sensor, COM8, 7, 1, enable);
     if (ret == 0) {
-        ESP_LOGD(TAG, "Set aec2 to: %d", enable);
+        MP_LOGD(TAG, "Set aec2 to: %d", enable);
         sensor->status.aec2 = enable;
     }
     return ret;
@@ -364,7 +366,7 @@ static int set_bpc_dsp(sensor_t *sensor, int enable)
     int ret = 0;
     ret = set_reg_bits(sensor, 0x64, 1, 1, enable);
     if (ret == 0) {
-        ESP_LOGD(TAG, "Set bpc to: %d", enable);
+        MP_LOGD(TAG, "Set bpc to: %d", enable);
         sensor->status.bpc = enable;
     }
     return ret;
@@ -375,7 +377,7 @@ static int set_wpc_dsp(sensor_t *sensor, int enable)
     int ret = 0;
     ret = set_reg_bits(sensor, 0x64, 0, 1, enable);
     if (ret == 0) {
-        ESP_LOGD(TAG, "Set wpc to: %d", enable);
+        MP_LOGD(TAG, "Set wpc to: %d", enable);
         sensor->status.wpc = enable;
     }
     return ret;
@@ -386,7 +388,7 @@ static int set_raw_gma_dsp(sensor_t *sensor, int enable)
     int ret = 0;
     ret = set_reg_bits(sensor, 0x64, 2, 1, enable);
     if (ret == 0) {
-        ESP_LOGD(TAG, "Set raw_gma to: %d", enable);
+        MP_LOGD(TAG, "Set raw_gma to: %d", enable);
         sensor->status.raw_gma = enable;
     }
     return ret;
@@ -397,7 +399,7 @@ static int set_lenc_dsp(sensor_t *sensor, int enable)
     int ret = 0;
     ret = set_reg_bits(sensor, LC_CTR, 0, 1, enable);
     if (ret == 0) {
-        ESP_LOGD(TAG, "Set lenc to: %d", enable);
+        MP_LOGD(TAG, "Set lenc to: %d", enable);
         sensor->status.lenc = enable;
     }
     return ret;
@@ -409,7 +411,7 @@ static int set_agc_gain(sensor_t *sensor, int gain)
     int ret = 0;
     ret = set_reg_bits(sensor, COM9, 4, 3, gain % 5);
     if (ret == 0) {
-        ESP_LOGD(TAG, "Set gain to: %d", gain);
+        MP_LOGD(TAG, "Set gain to: %d", gain);
         sensor->status.agc_gain = gain;
     }
     return ret;
@@ -420,7 +422,7 @@ static int set_aec_value(sensor_t *sensor, int value)
     int ret = 0;
     ret =  SCCB_Write(sensor->slv_addr, AEC, value & 0xff) | SCCB_Write(sensor->slv_addr, AECH, value >> 8);
     if (ret == 0) {
-        ESP_LOGD(TAG, "Set aec_value to: %d", value);
+        MP_LOGD(TAG, "Set aec_value to: %d", value);
         sensor->status.aec_value = value;
     }
     return ret;
@@ -431,7 +433,7 @@ static int set_awb_gain_dsp(sensor_t *sensor, int enable)
     int ret = 0;
     ret = set_reg_bits(sensor, 0x63, 7, 1, enable);
     if (ret == 0) {
-        ESP_LOGD(TAG, "Set awb_gain to: %d", enable);
+        MP_LOGD(TAG, "Set awb_gain to: %d", enable);
         sensor->status.awb_gain = enable;
     }
     return ret;
@@ -442,7 +444,7 @@ static int set_brightness(sensor_t *sensor, int level)
     int ret = 0;
     ret = SCCB_Write(sensor->slv_addr, 0x9B, level);
     if (ret == 0) {
-        ESP_LOGD(TAG, "Set brightness to: %d", level);
+        MP_LOGD(TAG, "Set brightness to: %d", level);
         sensor->status.brightness = level;
     }
     return ret;
@@ -453,7 +455,7 @@ static int set_contrast(sensor_t *sensor, int level)
     int ret = 0;
     ret = SCCB_Write(sensor->slv_addr, 0x9C, level);
     if (ret == 0) {
-        ESP_LOGD(TAG, "Set contrast to: %d", level);
+        MP_LOGD(TAG, "Set contrast to: %d", level);
         sensor->status.contrast = level;
     }
     return ret;
@@ -551,7 +553,7 @@ int ov7725_init(sensor_t *sensor)
     sensor->id.PID = SCCB_Read(sensor->slv_addr, REG_PID);
     sensor->id.VER = SCCB_Read(sensor->slv_addr, REG_VER);
     
-    ESP_LOGD(TAG, "OV7725 Attached");
+    MP_LOGD(TAG, "OV7725 Attached");
 
     return 0;
 }
