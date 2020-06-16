@@ -1594,24 +1594,43 @@ esp_err_t esp_camera_deinit()
 
 struct campy_FrameBuffer* esp_camera_fb_get()
 {
+    /*
+     * Checks if camera is initialized
+     */
     if (s_state == NULL)
     {
         mp_raise_msg(&mp_type_Exception, MP_ERROR_TEXT("Camera not initialized"));
     }
     
+    /*
+     * Is transfer already running?
+     */
     if (!I2S0.conf.rx_start)
     {
-        if (s_state->config.fb_count > 1)
+        /*
+         * Attach new buffer
+         */
+        if (s_state->config.fb_count == 1)
+        {
+            s_state->fb = campy_FrameBuffer_new();
+        }
+        else
         {
             MP_LOGD(TAG, "i2s_run");
         }
         
-        if (i2s_run() != 0)
+        /*
+         * Launch transfer
+         */
+        if (i2s_run())
         {
-            return NULL;
+            mp_raise_msg(&mp_type_Exception, MP_ERROR_TEXT("Transfer error"));
         }
     }
     
+    /*
+     * Wait for transfer completation - variant single buffer
+     */
     bool need_yield = false;
     
     if (s_state->config.fb_count == 1)
@@ -1619,12 +1638,15 @@ struct campy_FrameBuffer* esp_camera_fb_get()
         if (xSemaphoreTake(s_state->frame_ready, FB_GET_TIMEOUT) != pdTRUE)
         {
             i2s_stop(&need_yield);
-            MP_LOGE(TAG, "Failed to get the frame on time!");
-            return NULL;
+            mp_raise_msg(&mp_type_Exception, MP_ERROR_TEXT("Failed to get the frame on time"));
         }
-        return (struct campy_FrameBuffer*)s_state->fb;
+        
+        return s_state->fb;
     }
     
+    /*
+     * Wait for transfer completation - variant multiple buffers
+     */
     struct campy_FrameBuffer* fb = NULL;
     
     if (s_state->fb_out)
@@ -1632,8 +1654,7 @@ struct campy_FrameBuffer* esp_camera_fb_get()
         if (xQueueReceive(s_state->fb_out, &fb, FB_GET_TIMEOUT) != pdTRUE)
         {
             i2s_stop(&need_yield);
-            MP_LOGE(TAG, "Failed to get the frame on time!");
-            return NULL;
+            mp_raise_msg(&mp_type_Exception, MP_ERROR_TEXT("Failed to get the frame on time"));
         }
     }
     
@@ -1780,34 +1801,17 @@ extern struct campy_Camera* campy_Camera_new(const camera_config_t* aConfig)
 /*
  * See description with declaration
  */
-struct campy_FrameBuffer* campy_FrameBuffer_new(unsigned    aWidth,
-                                                unsigned    aHeight,
-                                                pixformat_t aPixFirmat,
-                                                const byte* aData,
-                                                size_t      aLen)
+struct campy_FrameBuffer* campy_FrameBuffer_new(void)
 {
     if (NULL == s_state)
     {
         mp_raise_msg(&mp_type_Exception, MP_ERROR_TEXT("Camera not initialized"));
     }
     
-    if (aLen > s_state->fb_size)
-    {
-        mp_raise_msg(&mp_type_Exception, MP_ERROR_TEXT("Data too large to be stored into buffer"));
-    }
+    struct campy_FrameBuffer* self = m_new0(struct campy_FrameBuffer, 1);
     
-    struct campy_FrameBuffer* self = m_new_obj(struct campy_FrameBuffer);
-    
-    self->base.type         = &MP_NAMESPACE2(campy, FrameBuffer);
-    self->buf               = (uint8_t*)m_malloc(s_state->fb_size);
-    self->len               = aLen;
-    self->width             = aWidth;
-    self->height            = aHeight;
-    self->format            = aPixFirmat;
-    self->timestamp.tv_sec  = 0;
-    self->timestamp.tv_usec = 0;
-    
-    memcpy(self->buf, aData, aLen);
+    self->base.type = &MP_NAMESPACE2(campy, FrameBuffer);
+    self->buf       = (uint8_t*)m_malloc(s_state->fb_size);
     
     return self;
 }

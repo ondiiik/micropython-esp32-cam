@@ -214,24 +214,7 @@ MP_FN_1(campy__Camera, capture, aSelf)
         mp_raise_msg(&mp_type_Exception, MP_ERROR_TEXT("This camera was replaced by another active camera"));
     }
     
-    
-    struct campy_FrameBuffer* fb = esp_camera_fb_get();
-    
-    if (!fb)
-    {
-        MP_LOGE(TAG, "Camera Capture Failed");
-        return mp_const_false;
-    }
-    
-    mp_obj_t frame = campy_FrameBuffer_new(fb->width,
-                                           fb->height,
-                                           fb->format,
-                                           fb->buf,
-                                           fb->len);
-    
-    esp_camera_fb_return(fb);
-    
-    return frame;
+    return (mp_obj_t)esp_camera_fb_get();
 }
 
 

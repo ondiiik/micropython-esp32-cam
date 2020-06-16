@@ -53,11 +53,7 @@ struct campy_FrameBuffer
  * 
  * @return  Allocated frame buffer
  */
-extern struct campy_FrameBuffer* campy_FrameBuffer_new(unsigned    aWidth,
-                                                       unsigned    aHeight,
-                                                       pixformat_t aPixFirmat,
-                                                       const byte* aData,
-                                                       size_t      aLen);
+extern struct campy_FrameBuffer* campy_FrameBuffer_new(void);
 
 
 /**
