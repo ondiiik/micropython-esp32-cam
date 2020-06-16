@@ -37,6 +37,6 @@ extern "C" {
 #define MP_LOGE(_tag_, ...) MP_LOG("!!", _tag_, __VA_ARGS__)
 #define MP_LOGW(_tag_, ...) MP_LOG("**", _tag_, __VA_ARGS__)
 #define MP_LOGI(_tag_, ...) MP_LOG("..", _tag_, __VA_ARGS__)
-#define MP_LOGD(_tag_, ...) MP_LOG("  ", _tag_, __VA_ARGS__)
-#define MP_LOGV(_tag_, ...) MP_LOG("  ", _tag_, __VA_ARGS__)
+#define MP_LOGD(_tag_, ...) /*MP_LOG("  ", _tag_, __VA_ARGS__)*/
+#define MP_LOGV(_tag_, ...) /*MP_LOG("  ", _tag_, __VA_ARGS__)*/
 

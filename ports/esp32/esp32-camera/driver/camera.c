@@ -213,90 +213,6 @@ static void skip_frame()
     }
 }
 
-static void camera_fb_deinit()
-{
-    struct campy_FrameBuffer* _fb1 = s_state->fb;
-    struct campy_FrameBuffer* _fb2 = NULL;
-    
-    while (s_state->fb)
-    {
-        _fb2        = s_state->fb;
-        s_state->fb = _fb2->next;
-        
-        if (_fb2->next == _fb1)
-        {
-            s_state->fb = NULL;
-        }
-        
-        m_free(_fb2->buf);
-        m_free(_fb2);
-    }
-}
-
-
-static esp_err_t camera_fb_init(size_t count)
-{
-    if (0 == count)
-    {
-        return ESP_ERR_INVALID_ARG;
-    }
-    
-    camera_fb_deinit();
-    
-    MP_LOGI(TAG, "Allocating %u frame buffers (%d KB total)", count, (s_state->fb_size * count) / 1024);
-    
-    struct campy_FrameBuffer* _fb  = NULL;
-    struct campy_FrameBuffer* _fb1 = NULL;
-    struct campy_FrameBuffer* _fb2 = NULL;
-    
-    for (size_t i = 0; i < count; i++)
-    {
-        _fb2 = (struct campy_FrameBuffer*)m_malloc0(sizeof(struct campy_FrameBuffer));
-        
-        if (NULL == _fb2)
-        {
-            goto fail;
-        }
-        
-        _fb2->size = s_state->fb_size;
-        _fb2->buf  = (uint8_t*)m_malloc0(_fb2->size);
-        
-        if (NULL == _fb2->buf)
-        {
-            m_free(_fb2);
-            MP_LOGE(TAG, "Allocating %d KB frame buffer Failed", s_state->fb_size / 1024);
-            goto fail;
-        }
-        
-        _fb2->next = _fb;
-        _fb        = _fb2;
-        
-        if (0 == i)
-        {
-            _fb1 = _fb2;
-        }
-    }
-    
-    if (NULL != _fb1)
-    {
-        _fb1->next = _fb;
-    }
-    
-    s_state->fb = _fb;//load first buffer
-    
-    return ESP_OK;
-    
-fail:
-    while (_fb)
-    {
-        _fb2 = _fb;
-        _fb = _fb->next;
-        m_free(_fb2->buf);
-        m_free(_fb2);
-    }
-    return ESP_ERR_NO_MEM;
-}
-
 static esp_err_t dma_desc_init()
 {
     assert(s_state->width % 4 == 0);
@@ -1381,12 +1297,6 @@ static void camera_init(const camera_config_t* config)
         mp_raise_msg(&mp_type_Exception, MP_ERROR_TEXT("Failed to initialize I2S and DMA"));
     }
     
-    if (ESP_OK != camera_fb_init(s_state->config.fb_count))
-    {
-        esp_camera_deinit();
-        mp_raise_msg(&mp_type_Exception, MP_ERROR_TEXT("Failed to allocate frame buffer"));
-    }
-    
     s_state->data_ready = xQueueCreate(16, sizeof(size_t));
     
     if (s_state->data_ready == NULL)
@@ -1398,6 +1308,7 @@ static void camera_init(const camera_config_t* config)
     if (s_state->config.fb_count == 1)
     {
         s_state->frame_ready = xSemaphoreCreateBinary();
+        
         if (s_state->frame_ready == NULL)
         {
             esp_camera_deinit();
@@ -1408,7 +1319,8 @@ static void camera_init(const camera_config_t* config)
     {
         s_state->fb_in  = xQueueCreate(s_state->config.fb_count, sizeof(struct campy_FrameBuffer*));
         s_state->fb_out = xQueueCreate(1, sizeof(struct campy_FrameBuffer*));
-        if (s_state->fb_in == NULL || s_state->fb_out == NULL)
+        
+        if ((s_state->fb_in == NULL) || (s_state->fb_out == NULL))
         {
             esp_camera_deinit();
             mp_raise_msg(&mp_type_Exception, MP_ERROR_TEXT("Failed to fb queues"));
@@ -1475,7 +1387,7 @@ static void camera_init(const camera_config_t* config)
     {
         (*s_state->sensor.set_quality)(&s_state->sensor, config->jpeg_quality);
     }
-
+    
     s_state->sensor.init_status(&s_state->sensor);
 }
 
@@ -1580,8 +1492,6 @@ esp_err_t esp_camera_deinit()
     }
     
     dma_desc_deinit();
-    camera_fb_deinit();
-    m_free(s_state);
     s_state = NULL;
     
     camera_disable_out_clock();
