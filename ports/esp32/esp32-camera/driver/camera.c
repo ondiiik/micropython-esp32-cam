@@ -442,22 +442,6 @@ static int i2s_run()
     
     struct campy_FrameBuffer* fb = s_state->fb;
     
-    while (s_state->config.fb_count > 1)
-    {
-        while ((s_state->fb->ref) &&
-               (s_state->fb->next != fb))
-        {
-            s_state->fb = s_state->fb->next;
-        }
-        
-        if (s_state->fb->ref == 0)
-        {
-            break;
-        }
-        
-        vTaskDelay(2);
-    }
-    
     //todo: wait for vsync
     MP_LOGV(TAG, "Waiting for negative edge on VSYNC");
     
@@ -485,7 +469,7 @@ static void IRAM_ATTR i2s_stop_bus()
 
 static void IRAM_ATTR i2s_stop(bool* need_yield)
 {
-    if (s_state->config.fb_count == 1 && !s_state->fb->bad)
+    if (!s_state->fb->bad)
     {
         i2s_stop_bus();
     }
@@ -556,13 +540,13 @@ static void IRAM_ATTR vsync_isr(void* arg)
         {
             signal_dma_buf_received(&need_yield);
             //ets_printf("end_vsync\n");
-            if (s_state->dma_filtered_count > 1 || s_state->fb->bad || s_state->config.fb_count > 1)
+            if (s_state->dma_filtered_count > 1 || s_state->fb->bad)
             {
                 i2s_stop(&need_yield);
             }
             //ets_printf("vs\n");
         }
-        if (s_state->config.fb_count > 1 || s_state->dma_filtered_count < 2)
+        if (s_state->dma_filtered_count < 2)
         {
             I2S0.conf.rx_start = 0;
             I2S0.in_link.start = 0;
@@ -584,81 +568,7 @@ static void IRAM_ATTR vsync_isr(void* arg)
 
 static void IRAM_ATTR camera_fb_done()
 {
-    struct campy_FrameBuffer* fb         = NULL;
-    struct campy_FrameBuffer* fb2        = NULL;
-    BaseType_t                taskAwoken = 0;
-    
-    if (s_state->config.fb_count == 1)
-    {
-        xSemaphoreGive(s_state->frame_ready);
-        return;
-    }
-    
-    fb = s_state->fb;
-    
-    if (!fb->ref && fb->len)
-    {
-        //add reference
-        fb->ref = 1;
-        
-        //check if the queue is full
-        if (xQueueIsQueueFullFromISR(s_state->fb_out) == pdTRUE)
-        {
-            //pop frame buffer from the queue
-            if (xQueueReceiveFromISR(s_state->fb_out, &fb2, &taskAwoken) == pdTRUE)
-            {
-                //free the popped buffer
-                fb2->ref = 0;
-                fb2->len = 0;
-                //push the new frame to the end of the queue
-                xQueueSendFromISR(s_state->fb_out, &fb, &taskAwoken);
-            }
-            else
-            {
-                //queue is full and we could not pop a frame from it
-            }
-        }
-        else
-        {
-            //push the new frame to the end of the queue
-            xQueueSendFromISR(s_state->fb_out, &fb, &taskAwoken);
-        }
-    }
-    else
-    {
-        //frame was referenced or empty
-    }
-    
-    //return buffers to be filled
-    while (xQueueReceiveFromISR(s_state->fb_in, &fb2, &taskAwoken) == pdTRUE)
-    {
-        fb2->ref = 0;
-        fb2->len = 0;
-    }
-    
-    //advance frame buffer only if the current one has data
-    if (s_state->fb->len)
-    {
-        s_state->fb = s_state->fb->next;
-    }
-    //try to find the next free frame buffer
-    while (s_state->fb->ref && s_state->fb->next != fb)
-    {
-        s_state->fb = s_state->fb->next;
-    }
-    
-    //is the found frame buffer free?
-    if (!s_state->fb->ref)
-    {
-        //buffer found. make sure it's empty
-        s_state->fb->len = 0;
-        *((uint32_t*)s_state->fb->buf) = 0;
-    }
-    else
-    {
-        //stay at the previous buffer
-        s_state->fb = fb;
-    }
+    xSemaphoreGive(s_state->frame_ready);
 }
 
 static void IRAM_ATTR dma_finish_frame()
@@ -673,16 +583,13 @@ static void IRAM_ATTR dma_finish_frame()
             s_state->fb->bad = 0;
             s_state->fb->len = 0;
             *((uint32_t*)s_state->fb->buf) = 0;
-            if (s_state->config.fb_count == 1)
-            {
-                i2s_start_bus();
-            }
-            //ets_printf("bad\n");
+            i2s_start_bus();
         }
         else
         {
             s_state->fb->len = s_state->dma_filtered_count * buf_len;
-            if (s_state->fb->len)
+            
+            if (0 != s_state->fb->len)
             {
                 //find the end marker for JPEG. Data after that can be discarded
                 if (s_state->fb->format == PIXFORMAT_JPEG)
@@ -710,14 +617,10 @@ static void IRAM_ATTR dma_finish_frame()
                 //send out the frame
                 camera_fb_done();
             }
-            else if (s_state->config.fb_count == 1)
+            else
             {
                 //frame was empty?
                 i2s_start_bus();
-            }
-            else
-            {
-                //ets_printf("empty\n");
             }
         }
     }
@@ -1298,26 +1201,12 @@ static void camera_init(const camera_config_t* config)
         mp_raise_msg(&mp_type_Exception, MP_ERROR_TEXT("Failed to dma queue"));
     }
     
-    if (s_state->config.fb_count == 1)
+    s_state->frame_ready = xSemaphoreCreateBinary();
+    
+    if (s_state->frame_ready == NULL)
     {
-        s_state->frame_ready = xSemaphoreCreateBinary();
-        
-        if (s_state->frame_ready == NULL)
-        {
-            esp_camera_deinit();
-            mp_raise_msg(&mp_type_Exception, MP_ERROR_TEXT("Failed to create semaphore"));
-        }
-    }
-    else
-    {
-        s_state->fb_in  = xQueueCreate(s_state->config.fb_count, sizeof(struct campy_FrameBuffer*));
-        s_state->fb_out = xQueueCreate(1, sizeof(struct campy_FrameBuffer*));
-        
-        if ((s_state->fb_in == NULL) || (s_state->fb_out == NULL))
-        {
-            esp_camera_deinit();
-            mp_raise_msg(&mp_type_Exception, MP_ERROR_TEXT("Failed to fb queues"));
-        }
+        esp_camera_deinit();
+        mp_raise_msg(&mp_type_Exception, MP_ERROR_TEXT("Failed to create semaphore"));
     }
     
     //ToDo: core affinity?
@@ -1524,14 +1413,7 @@ struct campy_FrameBuffer* esp_camera_fb_get()
         /*
          * Attach new buffer
          */
-        if (s_state->config.fb_count == 1)
-        {
-            s_state->fb = campy_FrameBuffer_new();
-        }
-        else
-        {
-            MP_LOGD(TAG, "i2s_run");
-        }
+        s_state->fb = campy_FrameBuffer_new();
         
         /*
          * Launch transfer
@@ -1547,41 +1429,13 @@ struct campy_FrameBuffer* esp_camera_fb_get()
      */
     bool need_yield = false;
     
-    if (s_state->config.fb_count == 1)
+    if (xSemaphoreTake(s_state->frame_ready, FB_GET_TIMEOUT) != pdTRUE)
     {
-        if (xSemaphoreTake(s_state->frame_ready, FB_GET_TIMEOUT) != pdTRUE)
-        {
-            i2s_stop(&need_yield);
-            mp_raise_msg(&mp_type_Exception, MP_ERROR_TEXT("Failed to get the frame on time"));
-        }
-        
-        return s_state->fb;
+        i2s_stop(&need_yield);
+        mp_raise_msg(&mp_type_Exception, MP_ERROR_TEXT("Failed to get the frame on time"));
     }
     
-    /*
-     * Wait for transfer completation - variant multiple buffers
-     */
-    struct campy_FrameBuffer* fb = NULL;
-    
-    if (s_state->fb_out)
-    {
-        if (xQueueReceive(s_state->fb_out, &fb, FB_GET_TIMEOUT) != pdTRUE)
-        {
-            i2s_stop(&need_yield);
-            mp_raise_msg(&mp_type_Exception, MP_ERROR_TEXT("Failed to get the frame on time"));
-        }
-    }
-    
-    return fb;
-}
-
-void esp_camera_fb_return(struct campy_FrameBuffer* fb)
-{
-    if (fb == NULL || s_state == NULL || s_state->config.fb_count == 1 || s_state->fb_in == NULL)
-    {
-        return;
-    }
-    xQueueSend(s_state->fb_in, &fb, portMAX_DELAY);
+    return s_state->fb;
 }
 
 sensor_t* esp_camera_sensor_get()

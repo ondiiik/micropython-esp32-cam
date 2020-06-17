@@ -126,10 +126,3 @@ extern const mp_obj_type_t MP_NAMESPACE2(campy, Camera);
  * @return pointer to the frame buffer
  */
 struct campy_FrameBuffer* esp_camera_fb_get();
-
-/**
- * @brief Return the frame buffer to be reused again.
- *
- * @param fb    Pointer to the frame buffer
- */
-void esp_camera_fb_return(struct campy_FrameBuffer* fb);
